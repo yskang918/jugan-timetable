@@ -1773,6 +1773,7 @@ const App = {
                         <input type="number" min="0" class="login-input" style="width:56px; padding:3px 6px; font-size:0.8rem;" value="${sp.weeklyCount || ''}" placeholder="전체" oninput="App.updateSpWeeklyCount(${idx}, this.value)">
                         회
                     </label>
+                    <button onclick="App.reconcileSpecialistNow(${idx})" style="padding:3px 12px;border-radius:6px;font-size:0.76rem;font-weight:700;border:1.5px solid #6366f1;background:#ede9fe;color:#4f46e5;cursor:pointer;" title="지금 설정한 횟수에 맞춰 이번 주 시간표를 바로 정리합니다 (많으면 지우고 적으면 채움).">🔧 이번 주에 지금 설정 적용</button>
                 </div>
                 <table class="excel-table sp-table"><thead><tr><th>교시</th>${this.days.map(d=>`<th>${d}</th>`).join('')}</tr></thead><tbody>`;
             const maxP = Math.max(...Object.values(this.state.config.periods));
@@ -2979,6 +2980,95 @@ ${bodyRows.join('')}
         });
         wData.specialistAutofilled = true;
         this._syncSpecialistTargets(week);
+    },
+
+    // "주당 실제 사용" 값을 바꾼 뒤, 이번 주에 지금 설정대로 맞춰 정리 (사람이 버튼을 눌러야만 실행됨).
+    // 자동 채움과 달리 초과분은 지우고 부족분은 채워서 정확히 그 횟수에 맞춥니다.
+    reconcileSpecialistNow(idx) {
+        const sp = this._sp()[idx];
+        if (!sp) return;
+        const sub = sp.subject || sp.name;
+        if (!sub) { this.showToast('과목명을 먼저 입력하세요.'); return; }
+        if (!sp.weeklyCount) { this.showToast('"주당 실제 사용" 횟수를 먼저 입력해주세요.'); return; }
+
+        this.showConfirm('이번 주 정리', `<b>${sub}</b>을(를) 이번 주 시간표에서 반마다 <b>${sp.weeklyCount}회</b>에 맞춰 정리합니다.<br>많으면 지우고, 적으면 채웁니다.<br><br>계속하시겠습니까?`).then(r => {
+            if (!r) return;
+            const week = this.state.currentWeek;
+            const wData = this.state.history[week];
+            if (!wData.specialistCells) wData.specialistCells = {};
+            const mark = (cStr, d, p) => {
+                wData.classes[cStr][d][p] = sub;
+                if (!wData.specialistCells[cStr]) wData.specialistCells[cStr] = {};
+                if (!wData.specialistCells[cStr][d]) wData.specialistCells[cStr][d] = {};
+                wData.specialistCells[cStr][d][p] = true;
+            };
+            const unmark = (cStr, d, p) => {
+                wData.classes[cStr][d][p] = '';
+                if (wData.specialistCells[cStr]?.[d]) delete wData.specialistCells[cStr][d][p];
+            };
+
+            // 1단계: 지금 이 과목이 채워진 칸을 전부 훑어서 반별 개수와 사용 중인 슬롯을 파악
+            const usedSlots = new Set();
+            const classCounts = {};
+            for (let c = 1; c <= this.state.config.classCount; c++) {
+                const cStr = String(c), classData = wData.classes[cStr] || {};
+                let cnt = 0;
+                this.days.forEach(d => {
+                    const arr = classData[d] || [];
+                    for (let p = 0; p < arr.length; p++) {
+                        if (arr[p] === sub && wData.specialistCells[cStr]?.[d]?.[p]) { cnt++; usedSlots.add(`${d}-${p}`); }
+                    }
+                });
+                classCounts[cStr] = cnt;
+            }
+
+            let removed = 0, added = 0;
+            for (let c = 1; c <= this.state.config.classCount; c++) {
+                const cStr = String(c), classData = wData.classes[cStr];
+                let filled = classCounts[cStr];
+
+                // 초과분 지우기 (요일 순서상 뒤에 있는 것부터)
+                if (filled > sp.weeklyCount) {
+                    let kept = 0;
+                    for (const d of this.days) {
+                        const arr = classData[d] || [];
+                        for (let p = 0; p < arr.length; p++) {
+                            if (arr[p] === sub && wData.specialistCells[cStr]?.[d]?.[p]) {
+                                if (kept < sp.weeklyCount) kept++;
+                                else { unmark(cStr, d, p); usedSlots.delete(`${d}-${p}`); filled--; removed++; }
+                            }
+                        }
+                    }
+                }
+
+                // 부족분 채우기 (다른 반이 이미 쓰는 시간은 건너뜀)
+                if (filled < sp.weeklyCount) {
+                    const candidates = [];
+                    this.days.forEach(d => {
+                        if (!sp.data[d]) return;
+                        for (let p = 0; p < this.state.config.periods[d]; p++) {
+                            if (!sp.data[d][p]) continue;
+                            const classes = String(sp.data[d][p]).split(/[,\s]+/).map(v => v.trim()).filter(Boolean);
+                            if (classes.includes(cStr)) candidates.push([d, p]);
+                        }
+                    });
+                    for (const [d, p] of candidates) {
+                        if (filled >= sp.weeklyCount) break;
+                        const key = `${d}-${p}`;
+                        if (usedSlots.has(key) || classData[d][p]) continue;
+                        mark(cStr, d, p);
+                        usedSlots.add(key);
+                        filled++;
+                        added++;
+                    }
+                }
+            }
+
+            this._syncSpecialistTargets(week);
+            this.saveData();
+            this.renderTimetableLayout();
+            this.showToast(`✅ 정리 완료 — ${removed}칸 지움, ${added}칸 채움`);
+        });
     },
 
     // 전담 과목의 "이번 주 목표"를 실제 시간표에 채워진 개수와 항상 일치하게 맞춤 (늘어도 줄어도 반영)
