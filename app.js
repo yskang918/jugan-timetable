@@ -2746,8 +2746,19 @@ ${bodyRows.join('')}
         this.showAlert('설정 저장 완료', '변경된 설정이 저장되었습니다.');
     },
     
-    clearClass(cNum) { this.showConfirm('반 시간표 초기화', `${cNum}반의 이번 주 시간표를 모두 지웁니다.<br>계속하시겠습니까?`).then(async r => { if(r){ this.days.forEach(d => this.state.history[this.state.currentWeek].classes[cNum][d] = []); const sc = this.state.history[this.state.currentWeek].specialistCells; if (sc) delete sc[cNum]; this.saveData(); this.renderTimetableLayout(); if (this.state.isAdmin && this.state.roomCode) { const btn = document.querySelector(`.btn-clear-class-admin[data-cls="${cNum}"]`); if (btn) { btn.disabled = true; btn.textContent = '삭제 중...'; } try { await FirebaseDB.saveAdmin(this.state.roomCode, this.state); this.showToast(`✅ ${cNum}반 시간표를 삭제했습니다.`); } catch(e) { this.showToast('❌ 서버 저장 실패: ' + e.message); } finally { if (btn) { btn.disabled = false; btn.textContent = '삭제'; } } } } }); },
-    clearAllClasses() { this.showConfirm('전체 시간표 초기화', '모든 반의 이번 주 시간표를 전부 지웁니다.<br>이 작업은 되돌릴 수 없습니다. 계속하시겠습니까?').then(r => { if(r){ for(let c=1; c<=this.state.config.classCount; c++) this.days.forEach(d => this.state.history[this.state.currentWeek].classes[c][d] = []); this.state.history[this.state.currentWeek].specialistCells = {}; this.state.history[this.state.currentWeek].fixedSlots = []; this.saveData(); this.renderTimetableLayout(); } }); },
+    // 전담·주간 공통 고정 배정(specialistCells로 잠긴 칸)은 건드리지 않고, 담임 과목 배정만 지움
+    _clearNonSpecialistCells(cNum) {
+        const wData = this.state.history[this.state.currentWeek];
+        const sc = wData.specialistCells?.[cNum] || {};
+        this.days.forEach(d => {
+            const arr = wData.classes[cNum][d] || [];
+            for (let p = 0; p < arr.length; p++) {
+                if (!sc[d]?.[p]) arr[p] = '';
+            }
+        });
+    },
+    clearClass(cNum) { this.showConfirm('반 시간표 초기화', `${cNum}반의 담임 과목 배정을 모두 지웁니다.<br>전담·고정 배정은 그대로 남습니다.<br>계속하시겠습니까?`).then(async r => { if(r){ this._clearNonSpecialistCells(cNum); this.saveData(); this.renderTimetableLayout(); if (this.state.isAdmin && this.state.roomCode) { const btn = document.querySelector(`.btn-clear-class-admin[data-cls="${cNum}"]`); if (btn) { btn.disabled = true; btn.textContent = '삭제 중...'; } try { await FirebaseDB.saveAdmin(this.state.roomCode, this.state); this.showToast(`✅ ${cNum}반 시간표를 삭제했습니다.`); } catch(e) { this.showToast('❌ 서버 저장 실패: ' + e.message); } finally { if (btn) { btn.disabled = false; btn.textContent = '삭제'; } } } } }); },
+    clearAllClasses() { this.showConfirm('전체 시간표 초기화', '모든 반의 담임 과목 배정을 전부 지웁니다.<br>전담·고정 배정은 그대로 남습니다.<br>이 작업은 되돌릴 수 없습니다. 계속하시겠습니까?').then(r => { if(r){ for(let c=1; c<=this.state.config.classCount; c++) this._clearNonSpecialistCells(c); this.saveData(); this.renderTimetableLayout(); } }); },
     createNewWeek() {
         const prevWeek = this.state.currentWeek;
         this.state.maxWeek++;
