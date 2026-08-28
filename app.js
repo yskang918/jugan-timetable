@@ -1760,8 +1760,13 @@ const App = {
                         <button class="del-btn" onclick="App.deleteSp(${idx})">✕</button>
                     </div>
                 </div>
-                <div style="display:flex;align-items:center;padding:4px 10px;background:${isHidden ? '#ede9fe' : '#f8fafc'};border-bottom:1px solid #e5e7eb;">
+                <div style="display:flex;align-items:center;gap:10px;padding:4px 10px;background:${isHidden ? '#ede9fe' : '#f8fafc'};border-bottom:1px solid #e5e7eb;flex-wrap:wrap;">
                     <button onclick="App.toggleSpHide(${idx})" style="padding:3px 12px;border-radius:6px;font-size:0.76rem;font-weight:700;border:1.5px solid ${isHidden ? '#6366f1' : '#cbd5e1'};background:${isHidden ? '#ddd6fe' : '#f1f5f9'};color:${isHidden ? '#4f46e5' : '#64748b'};cursor:pointer;">${isHidden ? '✓ 이번 주 숨김 (클릭 시 해제)' : '이번 주 숨기기'}</button>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:0.76rem;color:#64748b;font-weight:600;" title="한 반에 후보 칸을 여러 개 등록해둔 경우(예: 과학실처럼 겹치지 않게 돌아가며 쓰는 자원), 반마다 실제로 채울 횟수를 제한합니다. 비워두면 후보 칸을 전부 채웁니다.">
+                        주당 실제 사용
+                        <input type="number" min="0" class="login-input" style="width:56px; padding:3px 6px; font-size:0.8rem;" value="${sp.weeklyCount || ''}" placeholder="전체" oninput="App.updateSpWeeklyCount(${idx}, this.value)">
+                        회
+                    </label>
                 </div>
                 <table class="excel-table sp-table"><thead><tr><th>교시</th>${this.days.map(d=>`<th>${d}</th>`).join('')}</tr></thead><tbody>`;
             const maxP = Math.max(...Object.values(this.state.config.periods));
@@ -2118,6 +2123,7 @@ const App = {
     },
     updateSpName(i, v) { if(!this._sp()[i]) return; this._sp()[i].subject = v; this.saveData(); this._markSpDirty(); this.renderSpecialistSummary(); if(this.state.spPreviewOpen) this.renderSpecialistPreview(); },
     updateSpDesc(i, v) { if(!this._sp()[i]) return; this._sp()[i].desc = v; this.saveData(); this._markSpDirty(); },
+    updateSpWeeklyCount(i, v) { if(!this._sp()[i]) return; const n = parseInt(v); this._sp()[i].weeklyCount = (n > 0) ? n : null; this.saveData(); this._markSpDirty(); },
     updateSpData(i, d, p, v) {
         if(!this._sp()[i]) return;
         if(!this._sp()[i].data) this._sp()[i].data = {};
@@ -2910,26 +2916,59 @@ ${bodyRows.join('')}
         if (!wData) return;
         const boards = (wData.specialists || []).filter(sp => (sp.subject || sp.name) && !(sp.hiddenWeeks || []).includes(week));
         if (!wData.specialistCells) wData.specialistCells = {};
+        const mark = (cStr, d, p, sub) => {
+            wData.classes[cStr][d][p] = sub;
+            if (!wData.specialistCells[cStr]) wData.specialistCells[cStr] = {};
+            if (!wData.specialistCells[cStr][d]) wData.specialistCells[cStr][d] = {};
+            wData.specialistCells[cStr][d][p] = true;
+        };
+
         boards.forEach(sp => {
             const sub = sp.subject || sp.name;
             for (let c = 1; c <= this.state.config.classCount; c++) {
                 const cStr = String(c);
                 if (!wData.classes[cStr]) wData.classes[cStr] = { "월": [], "화": [], "수": [], "목": [], "금": [] };
-                const classData = wData.classes[cStr];
-                this.days.forEach(d => {
-                    if (!classData[d]) classData[d] = [];
-                    if (!sp.data[d]) return;
-                    for (let p = 0; p < this.state.config.periods[d]; p++) {
-                        if (!sp.data[d][p]) continue;
-                        const classes = String(sp.data[d][p]).split(/[,\s]+/).map(v => v.trim()).filter(Boolean);
-                        if (classes.includes(cStr) && !classData[d][p]) {
-                            classData[d][p] = sub;
-                            if (!wData.specialistCells[cStr]) wData.specialistCells[cStr] = {};
-                            if (!wData.specialistCells[cStr][d]) wData.specialistCells[cStr][d] = {};
-                            wData.specialistCells[cStr][d][p] = true;
+                this.days.forEach(d => { if (!wData.classes[cStr][d]) wData.classes[cStr][d] = []; });
+            }
+
+            if (!sp.weeklyCount) {
+                // 반마다 후보 칸을 전부 채움 (기본 동작 — 후보가 반별로 1개씩만 등록된 보드용)
+                for (let c = 1; c <= this.state.config.classCount; c++) {
+                    const cStr = String(c), classData = wData.classes[cStr];
+                    this.days.forEach(d => {
+                        if (!sp.data[d]) return;
+                        for (let p = 0; p < this.state.config.periods[d]; p++) {
+                            if (!sp.data[d][p]) continue;
+                            const classes = String(sp.data[d][p]).split(/[,\s]+/).map(v => v.trim()).filter(Boolean);
+                            if (classes.includes(cStr) && !classData[d][p]) mark(cStr, d, p, sub);
                         }
+                    });
+                }
+            } else {
+                // 반마다 "주당 실제 사용" 횟수만큼만 골라 채우고, 같은 시간에 다른 반과 겹치지 않게 함
+                // (과학실처럼 후보 칸이 여러 개 등록된 자원 — 실제로 쓰는 건 그중 일부뿐)
+                const usedSlots = new Set();
+                for (let c = 1; c <= this.state.config.classCount; c++) {
+                    const cStr = String(c), classData = wData.classes[cStr];
+                    const candidates = [];
+                    this.days.forEach(d => {
+                        if (!sp.data[d]) return;
+                        for (let p = 0; p < this.state.config.periods[d]; p++) {
+                            if (!sp.data[d][p]) continue;
+                            const classes = String(sp.data[d][p]).split(/[,\s]+/).map(v => v.trim()).filter(Boolean);
+                            if (classes.includes(cStr)) candidates.push([d, p]);
+                        }
+                    });
+                    let filled = 0;
+                    for (const [d, p] of candidates) {
+                        if (filled >= sp.weeklyCount) break;
+                        const key = `${d}-${p}`;
+                        if (usedSlots.has(key) || classData[d][p]) continue;
+                        mark(cStr, d, p, sub);
+                        usedSlots.add(key);
+                        filled++;
                     }
-                });
+                }
             }
         });
         wData.specialistAutofilled = true;
