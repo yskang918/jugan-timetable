@@ -1014,6 +1014,12 @@ const App = {
             }
             // 항상 최신 주차로 이동
             this.state.currentWeek = this.state.maxWeek;
+            // 이 주차에 전담 배정을 아직 한 번도 반영한 적 없으면(예: 배포 직후 첫 접속) 여기서 채움.
+            // 이미 채운 적 있는 주차는 건드리지 않음 — 사람이 지운 칸이 되살아나지 않게.
+            const curWData = this.state.history[this.state.currentWeek];
+            if (curWData && !curWData.specialistAutofilled) {
+                this._autofillSpecialistsForWeek(this.state.currentWeek);
+            }
             this.saveData();
             this.renderTimetableLayout();
             this.calculateAndRenderValidationView?.();
