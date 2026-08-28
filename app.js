@@ -1770,7 +1770,7 @@ const App = {
                     <button onclick="App.toggleSpHide(${idx})" style="padding:3px 12px;border-radius:6px;font-size:0.76rem;font-weight:700;border:1.5px solid ${isHidden ? '#6366f1' : '#cbd5e1'};background:${isHidden ? '#ddd6fe' : '#f1f5f9'};color:${isHidden ? '#4f46e5' : '#64748b'};cursor:pointer;">${isHidden ? '✓ 이번 주 숨김 (클릭 시 해제)' : '이번 주 숨기기'}</button>
                     <label style="display:flex;align-items:center;gap:6px;font-size:0.76rem;color:#64748b;font-weight:600;" title="한 반에 후보 칸을 여러 개 등록해둔 경우(예: 과학실처럼 겹치지 않게 돌아가며 쓰는 자원), 반마다 실제로 채울 횟수를 제한합니다. 비워두면 후보 칸을 전부 채웁니다.">
                         주당 실제 사용
-                        <input type="number" min="0" class="login-input" style="width:56px; padding:3px 6px; font-size:0.8rem;" value="${sp.weeklyCount || ''}" placeholder="전체" oninput="App.updateSpWeeklyCount(${idx}, this.value)">
+                        <input type="number" min="0" class="login-input" style="width:56px; padding:3px 6px; font-size:0.8rem;" value="${sp.weeklyCount != null ? sp.weeklyCount : ''}" placeholder="전체" oninput="App.updateSpWeeklyCount(${idx}, this.value)">
                         회
                     </label>
                     <button onclick="App.reconcileSpecialistNow(${idx})" style="padding:3px 12px;border-radius:6px;font-size:0.76rem;font-weight:700;border:1.5px solid #6366f1;background:#ede9fe;color:#4f46e5;cursor:pointer;" title="지금 설정한 횟수에 맞춰 이번 주 시간표를 바로 정리합니다 (많으면 지우고 적으면 채움).">🔧 이번 주에 지금 설정 적용</button>
@@ -2130,7 +2130,15 @@ const App = {
     },
     updateSpName(i, v) { if(!this._sp()[i]) return; this._sp()[i].subject = v; this.saveData(); this._markSpDirty(); this.renderSpecialistSummary(); if(this.state.spPreviewOpen) this.renderSpecialistPreview(); },
     updateSpDesc(i, v) { if(!this._sp()[i]) return; this._sp()[i].desc = v; this.saveData(); this._markSpDirty(); },
-    updateSpWeeklyCount(i, v) { if(!this._sp()[i]) return; const n = parseInt(v); this._sp()[i].weeklyCount = (n > 0) ? n : null; this.saveData(); this._markSpDirty(); },
+    // v가 빈 문자열이면 "전체 채움"(기존 동작, weeklyCount 없음), 0 이상 숫자면 그 횟수로 제한(0도 유효한 값 — "이번 주엔 아예 안 씀")
+    updateSpWeeklyCount(i, v) {
+        if (!this._sp()[i]) return;
+        const trimmed = String(v).trim();
+        const n = parseInt(trimmed);
+        this._sp()[i].weeklyCount = (trimmed !== '' && Number.isInteger(n) && n >= 0) ? n : null;
+        this.saveData();
+        this._markSpDirty();
+    },
     updateSpData(i, d, p, v) {
         if(!this._sp()[i]) return;
         if(!this._sp()[i].data) this._sp()[i].data = {};
@@ -2938,7 +2946,7 @@ ${bodyRows.join('')}
                 this.days.forEach(d => { if (!wData.classes[cStr][d]) wData.classes[cStr][d] = []; });
             }
 
-            if (!sp.weeklyCount) {
+            if (sp.weeklyCount == null) {
                 // 반마다 후보 칸을 전부 채움 (기본 동작 — 후보가 반별로 1개씩만 등록된 보드용)
                 for (let c = 1; c <= this.state.config.classCount; c++) {
                     const cStr = String(c), classData = wData.classes[cStr];
@@ -2989,7 +2997,7 @@ ${bodyRows.join('')}
         if (!sp) return;
         const sub = sp.subject || sp.name;
         if (!sub) { this.showToast('과목명을 먼저 입력하세요.'); return; }
-        if (!sp.weeklyCount) { this.showToast('"주당 실제 사용" 횟수를 먼저 입력해주세요.'); return; }
+        if (sp.weeklyCount == null) { this.showToast('"주당 실제 사용" 횟수를 먼저 입력해주세요.'); return; }
 
         this.showConfirm('이번 주 정리', `<b>${sub}</b>을(를) 이번 주 시간표에서 반마다 <b>${sp.weeklyCount}회</b>에 맞춰 정리합니다.<br>많으면 지우고, 적으면 채웁니다.<br><br>계속하시겠습니까?`).then(r => {
             if (!r) return;
