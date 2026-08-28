@@ -148,7 +148,7 @@ const App = {
             for (let cNum = 1; cNum <= this.state.config.classCount; cNum++) {
                 classes[cNum] = { "월":[], "화":[], "수":[], "목":[], "금":[] };
             }
-            this.state.history[week] = { targets, classes, bgColors: {}, specialistTargets: {}, specialistMemo: '', weeklyMemo: '', specialistCells: {}, specialists: [], fixedSlots: [] };
+            this.state.history[week] = { targets, classes, bgColors: {}, specialistTargets: {}, specialistMemo: '', weeklyMemo: '', specialistCells: {}, specialists: [], fixedSlots: [], specialistAutofilled: false };
         }
     },
 
@@ -258,6 +258,7 @@ const App = {
                 this.saveData();
                 this.renderSingleValidationGrid(cNum);
                 this.calculateAndRenderValidationView();
+                this._renderTargetBar();
             }
         });
 
@@ -1339,6 +1340,30 @@ const App = {
     },
 
     /* --- Timetable Render --- */
+    // 상단 "이번 주 목표" 표만 다시 그림 (반별 시간표 입력칸은 그대로 두어 포커스가 끊기지 않게)
+    _renderTargetBar(mode) {
+        if (!mode) mode = this._timetableMode || 'all';
+        this._syncSpecialistTargets(this.state.currentWeek);
+        const tgts = this.state.history[this.state.currentWeek].targets, subs = this.state.config.subjects;
+        let th = `<div class="target-table-wrapper"><table class="target-table"><thead><tr><th>목표 차시</th>`;
+        subs.forEach(s => th += `<th>${s.name}</th>`);
+        th += `<th>합계</th></tr></thead><tbody><tr><td class="target-row-label">이번 주 목표</td>`;
+        const targetReadonly = (mode === 'single');
+        let tv = 0;
+        subs.forEach(s => {
+            const isAuto = this._isSpecialistManagedSubject(s.name);
+            const locked = targetReadonly || isAuto;
+            const cls = `target-input-global target-cell-input${locked ? ' target-locked' : ''}${isAuto ? ' target-auto' : ''}`;
+            const title = isAuto
+                ? '전담 배정에서 자동으로 계산됩니다. 반별 시간표에서 칸을 지우면 여기도 같이 줄어듭니다.'
+                : (targetReadonly ? '관리자만 목표 차시를 변경할 수 있습니다.' : '');
+            th += `<td><input type="text" inputmode="numeric" class="${cls}" data-sub="${s.name}" value="${tgts[s.name] || 0}"${locked ? ' readonly' : ''}${title ? ` title="${title}"` : ''}></td>`;
+            tv += tgts[s.name] || 0;
+        });
+        th += `<td class="total-val">${tv}</td></tr></tbody></table></div>`;
+        this.dom.weekTargetContainer.innerHTML = th;
+    },
+
     renderTimetableLayout(mode) {
         // mode가 없으면 현재 활성 메뉴 기준으로 판단
         if (!mode) {
@@ -1349,14 +1374,7 @@ const App = {
         this.dom.weekLabel.textContent = `${this.state.currentWeek}주차 시간표`;
         this.updateWeekDateDisplay();
         this.renderWeekBookmarks();
-        const tgts = this.state.history[this.state.currentWeek].targets, subs = this.state.config.subjects;
-        let th = `<div class="target-table-wrapper"><table class="target-table"><thead><tr><th>목표 차시</th>`;
-        subs.forEach(s => th += `<th>${s.name}</th>`);
-        th += `<th>합계</th></tr></thead><tbody><tr><td class="target-row-label">이번 주 목표</td>`;
-        const targetReadonly = (mode === 'single');
-        let tv = 0; subs.forEach(s => { th += `<td><input type="text" inputmode="numeric" class="target-input-global target-cell-input${targetReadonly ? ' target-locked' : ''}" data-sub="${s.name}" value="${tgts[s.name]||0}"${targetReadonly ? ' readonly title="관리자만 목표 차시를 변경할 수 있습니다."' : ''}></td>`; tv += tgts[s.name] || 0; });
-        th += `<td class="total-val">${tv}</td></tr></tbody></table></div>`;
-        this.dom.weekTargetContainer.innerHTML = th;
+        this._renderTargetBar(mode);
 
         // 전체 시간표(all): 모든 반, 반별 시간표(single): 자기 반만
         const classesToRender = mode === 'all'
@@ -1441,13 +1459,12 @@ const App = {
             this.dom.allClassesContainer.innerHTML = lh;
         }
         // 관리자 전용 버튼: 전체 시간표(all) 모드 + 관리자일 때만 표시
-        const adminOnlyBtns = ['btn-clear-all', 'btn-create-week', 'btn-weekly-memo', 'btn-random-all', 'btn-server-save', 'fixed-slots-card', 'specialist-import-card'];
+        const adminOnlyBtns = ['btn-clear-all', 'btn-create-week', 'btn-weekly-memo', 'btn-random-all', 'btn-server-save', 'fixed-slots-card'];
         adminOnlyBtns.forEach(id => {
             const el = document.getElementById(id);
             if (el) el.classList.toggle('hide', mode !== 'all' || !this.state.isAdmin);
         });
         if (mode === 'all' && this.state.isAdmin) {
-            this.renderSpecialistImportCard();
             this.renderFixedSlotsCard();
         }
         this.renderAllValidationGrids();
@@ -1767,30 +1784,6 @@ const App = {
     },
 
     /* --- 이번 주 전담과목 가져오기 (전체 시간표 상단) --- */
-    renderSpecialistImportCard() {
-        const listEl = document.getElementById('specialist-import-list');
-        if (!listEl) return;
-        const boards = this._sp();
-        if (!boards || boards.length === 0) {
-            listEl.innerHTML = `<div style="font-size:0.8rem; color:#94a3b8; padding:4px 2px;">전담배정 보드에 설정된 과목이 없습니다.</div>`;
-            return;
-        }
-        listEl.innerHTML = boards.map((sp, idx) => {
-            const sub = sp.subject || sp.name || '(과목명 없음)';
-            const desc = sp.desc || '';
-            const isHidden = (sp.hiddenWeeks || []).includes(this.state.currentWeek);
-            return `
-                <div style="display:flex; align-items:center; justify-content:space-between; padding:8px 12px; border:1px solid #e5e7eb; border-radius:8px; margin-bottom:6px; background:#f8fafc;">
-                    <span style="font-size:0.85rem; color:#1e293b;">
-                        <span style="display:inline-block; width:10px; height:10px; border-radius:3px; background:${sp.bg || '#e5e7eb'}; margin-right:8px; border:1px solid #e2e8f0;"></span>
-                        <b>${sub}</b>${desc ? ` <span style="color:#94a3b8; font-weight:400;">| ${desc}</span>` : ''}
-                        ${isHidden ? '<span style="color:#9333ea; font-size:0.75rem; margin-left:8px; font-weight:700;">이번 주 숨김</span>' : ''}
-                    </span>
-                    <button class="btn-secondary btn-sm" onclick="App.importSpecialist(${idx})" ${isHidden ? 'disabled title="이번 주 숨김 처리된 과목입니다"' : ''}>가져오기</button>
-                </div>`;
-        }).join('');
-    },
-
     /* --- 주간 공통 과목 고정 --- */
     renderFixedSlotsCard() {
         this.initWeekData(this.state.currentWeek);
@@ -2160,6 +2153,13 @@ const App = {
         const btn = document.getElementById('btn-save-specialist');
         if (btn) { btn.disabled = true; btn.textContent = '저장 중...'; }
         try {
+            // 이번 주에 전담 배정을 아직 한 번도 반영한 적 없으면(주로 맨 처음 설정할 때) 지금 한 번만 채워 넣음.
+            // 이후에는 다시 저장해도 이미 지운 칸을 되살리지 않도록 건너뜀.
+            const wData = this.state.history[this.state.currentWeek];
+            if (wData && !wData.specialistAutofilled) {
+                this._autofillSpecialistsForWeek(this.state.currentWeek);
+                this.renderTimetableLayout();
+            }
             await FirebaseDB.saveAdmin(this.state.roomCode, this.state);
             this._clearSpDirty();
             this.showToast('✅ 전담 데이터를 서버에 저장했습니다.');
@@ -2760,6 +2760,8 @@ ${bodyRows.join('')}
             curr.specialistTargets = JSON.parse(JSON.stringify(prev.specialistTargets || {}));
             curr.specialistMemo = prev.specialistMemo || '';
             curr.specialists = JSON.parse(JSON.stringify(prev.specialists || this.state.specialists || []));
+            // 전담 배정을 새 주차 반별 시간표에 기본으로 채움 (필요 없는 칸은 시간표에서 직접 지우면 됨)
+            this._autofillSpecialistsForWeek(this.state.currentWeek);
             // 매주 반복으로 설정된 고정 배정을 새 주차에도 자동 적용
             (prev.fixedSlots || []).filter(r => r.repeat).forEach(r => this._applyFixedSlotRule(this.state.currentWeek, r));
         }
@@ -2890,64 +2892,55 @@ ${bodyRows.join('')}
     },
 
     // 전담 보드 하나만 골라서 전체 시간표에 반영 (해당 주차에 없는 과목/줄어든 과목을 건너뛸 수 있게)
-    importSpecialist(idx) {
-        const sp = this._sp()[idx];
-        if (!sp) return;
-        const sub = sp.subject || sp.name || '';
-        if (!sub) { this.showToast('과목명을 먼저 입력하세요.'); return; }
-        if ((sp.hiddenWeeks || []).includes(this.state.currentWeek)) {
-            this.showToast('이번 주 숨김 처리된 보드입니다. 숨김을 해제한 뒤 가져오세요.');
-            return;
-        }
-
-        const wData = this.state.history[this.state.currentWeek];
-        const toImport = [], conflicts = [];
-        for (let c = 1; c <= this.state.config.classCount; c++) {
-            const cStr = String(c), classData = wData.classes[cStr];
-            this.days.forEach(d => {
-                for (let p = 0; p < this.state.config.periods[d]; p++) {
-                    if (sp.data[d] && sp.data[d][p]) {
+    // 전담 배정을 반별 시간표에 자동으로 채워 넣음. 이미 값이 있는 칸은 절대 덮어쓰지 않으므로
+    // (X로 지운 칸이 다시 채워지지 않도록) 몇 번을 호출해도 안전합니다.
+    _autofillSpecialistsForWeek(week) {
+        const wData = this.state.history[week];
+        if (!wData) return;
+        const boards = (wData.specialists || []).filter(sp => (sp.subject || sp.name) && !(sp.hiddenWeeks || []).includes(week));
+        if (!wData.specialistCells) wData.specialistCells = {};
+        boards.forEach(sp => {
+            const sub = sp.subject || sp.name;
+            for (let c = 1; c <= this.state.config.classCount; c++) {
+                const cStr = String(c);
+                if (!wData.classes[cStr]) wData.classes[cStr] = { "월": [], "화": [], "수": [], "목": [], "금": [] };
+                const classData = wData.classes[cStr];
+                this.days.forEach(d => {
+                    if (!classData[d]) classData[d] = [];
+                    if (!sp.data[d]) return;
+                    for (let p = 0; p < this.state.config.periods[d]; p++) {
+                        if (!sp.data[d][p]) continue;
                         const classes = String(sp.data[d][p]).split(/[,\s]+/).map(v => v.trim()).filter(Boolean);
-                        if (classes.includes(cStr)) {
-                            if (!classData[d][p]) {
-                                toImport.push({ cStr, d, p });
-                            } else {
-                                conflicts.push(`${c}반 ${d}요일 ${p + 1}교시 — 현재 <b>${classData[d][p]}</b> 때문에 <b>${sub}</b> 반영 불가`);
-                            }
+                        if (classes.includes(cStr) && !classData[d][p]) {
+                            classData[d][p] = sub;
+                            if (!wData.specialistCells[cStr]) wData.specialistCells[cStr] = {};
+                            if (!wData.specialistCells[cStr][d]) wData.specialistCells[cStr][d] = {};
+                            wData.specialistCells[cStr][d][p] = true;
                         }
                     }
-                }
-            });
-        }
-
-        if (toImport.length === 0 && conflicts.length === 0) {
-            this.showToast(`가져올 ${sub} 배정이 없습니다.`);
-            return;
-        }
-
-        let msg = `빈 교시 <b>${toImport.length}개</b>에 <b>${sub}</b> 과목이 반영됩니다.`;
-        if (conflicts.length > 0) {
-            msg += `<div style="margin-top:12px; padding:12px; background:#fef2f2; border-radius:8px; border:1px solid #fecaca;">
-                <div style="font-weight:700; color:#dc2626; margin-bottom:8px;">⚠️ 이미 내용이 있어 반영되지 않는 교시 (${conflicts.length}개)</div>
-                <div style="font-size:0.82rem; color:#b91c1c; line-height:2;">${conflicts.map(s => `• ${s}`).join('<br>')}</div>
-            </div>
-            <div style="margin-top:10px; font-size:0.85rem; color:#6b7280;">위 교시는 건너뛰고 나머지만 반영합니다.</div>`;
-        }
-
-        this.showConfirm(`${sub} 가져오기`, msg).then(r => {
-            if (!r) return;
-            if (!wData.specialistCells) wData.specialistCells = {};
-            toImport.forEach(({ cStr, d, p }) => {
-                wData.classes[cStr][d][p] = sub;
-                if (!wData.specialistCells[cStr]) wData.specialistCells[cStr] = {};
-                if (!wData.specialistCells[cStr][d]) wData.specialistCells[cStr][d] = {};
-                wData.specialistCells[cStr][d][p] = true;
-            });
-            this._bumpTargetForSubject(this.state.currentWeek, sub);
-            this.saveData();
-            this.renderTimetableLayout();
-            this.showToast(`✅ ${sub} 과목 ${toImport.length}개 교시 반영 완료`);
+                });
+            }
         });
+        wData.specialistAutofilled = true;
+        this._syncSpecialistTargets(week);
+    },
+
+    // 전담 과목의 "이번 주 목표"를 실제 시간표에 채워진 개수와 항상 일치하게 맞춤 (늘어도 줄어도 반영)
+    _syncSpecialistTargets(week) {
+        const wData = this.state.history[week];
+        if (!wData) return;
+        if (!wData.targets) wData.targets = {};
+        const specialistSubs = new Set((wData.specialists || [])
+            .filter(sp => !(sp.hiddenWeeks || []).includes(week))
+            .map(sp => sp.subject || sp.name)
+            .filter(Boolean));
+        specialistSubs.forEach(sub => { wData.targets[sub] = this._avgFilledForSubject(week, sub); });
+    },
+
+    // 현재 주차에서 이 과목이 전담 배정으로 자동 집계되는 과목인지
+    _isSpecialistManagedSubject(sub) {
+        const boards = this._sp();
+        return boards.some(sp => (sp.subject || sp.name) === sub && !(sp.hiddenWeeks || []).includes(this.state.currentWeek));
     },
 
     /* 반별 시간표 테이블 HTML — 헤더: [1반 | 월 | 화 | 수 | 목 | 금] 한 행 */

@@ -146,6 +146,8 @@ input[type="number"], input[type="text"] { font-family: inherit; }
 .target-cell-input:focus { background-color: var(--primary-light); }
 .target-cell-input.target-locked { background: #f8fafc; color: #94a3b8; cursor: not-allowed; }
 .target-cell-input.target-locked:focus { background: #f8fafc; }
+.target-cell-input.target-auto { background: #ede9fe; color: #6366f1; cursor: not-allowed; }
+.target-cell-input.target-auto:focus { background: #ede9fe; }
 .total-col { background: #f9fafb !important; color: var(--text-sub) !important; font-weight: 700 !important; border: 1px solid var(--border-color); white-space: nowrap; padding: 0 10px; }
 .total-val { font-size: 1rem; font-weight: 800; color: var(--text-main); background: #f9fafb; padding: 10px 4px; text-align: center; min-width: 50px; }
 
