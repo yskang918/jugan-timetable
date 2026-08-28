@@ -28,11 +28,6 @@
                 <div class="header-right">
                     <span id="autosave-indicator" style="font-size:0.76rem; color:#94a3b8; margin-right:4px; white-space:nowrap;"></span>
                     <button id="btn-server-load" class="btn-server-action" style="display:none;" onclick="App.loadFromServer()" title="다른 선생님이 저장한 최신 내용을 불러옵니다">↺ 새로고침</button>
-                    <span id="user-badge" class="hide" style="display:inline-flex; align-items:center; gap:8px; margin-left:6px;">
-                        <span id="user-info-text" style="font-size:0.8rem; font-weight:600; color:#475569; white-space:nowrap;"></span>
-                        <button id="btn-admin-mode" class="btn-admin-mode hide" onclick="App.toggleAdminMode()">🔑 관리자</button>
-                        <button id="btn-logout" class="btn-secondary btn-sm">나가기</button>
-                    </span>
                 </div>
             </div>
         </header>
@@ -366,108 +361,6 @@
                 </footer>
             </div>
         </div>
-
-        <!-- 새 학년 생성 모달 -->
-        <!-- 접속 화면 -->
-        <div id="login-overlay" class="login-overlay hide">
-            <div class="login-card">
-                <h2 class="login-title">주간학습 프로그램</h2>
-                <p style="font-size:0.9rem; color:#64748b; margin-bottom:26px; line-height:1.6;">
-                    학년을 고르고 성함과 담당 반을 적으면 들어갑니다.<br>
-                    같은 학년 선생님들은 모두 같은 시간표를 봅니다.
-                </p>
-
-                <label style="display:block; font-size:0.82rem; font-weight:700; color:#334155; margin-bottom:7px;">학년</label>
-                <select id="login-room-code" class="login-input" style="width:100%; margin-bottom:16px;">
-                    <option value="">불러오는 중...</option>
-                </select>
-
-                <label style="display:block; font-size:0.82rem; font-weight:700; color:#334155; margin-bottom:7px;">성함 · 담당 반</label>
-                <div style="display:flex; gap:8px; margin-bottom:24px;">
-                    <input id="login-name" type="text" class="login-input" placeholder="예) 강선생" maxlength="20" autocomplete="off">
-                    <input id="login-class-num" type="text" class="login-input text-center" placeholder="반" maxlength="3" autocomplete="off">
-                </div>
-                <p style="font-size:0.78rem; color:#94a3b8; margin-top:-16px; margin-bottom:22px;">
-                    전담 선생님은 반 칸에 <b>전담</b>이라고 적으세요.
-                </p>
-
-                <button id="btn-login" class="btn-primary" style="width:100%; padding:14px; font-size:1rem; font-weight:700;">들어가기</button>
-
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:20px; padding-top:18px; border-top:1px solid #e2e8f0;">
-                    <button id="btn-create-room" class="btn-secondary btn-sm">+ 새 학년 만들기</button>
-                    <button id="btn-superadmin" class="btn-secondary btn-sm" style="color:#94a3b8;">학년 관리</button>
-                </div>
-            </div>
-        </div>
-
-        <div id="create-room-overlay" class="cr-overlay hide">
-            <div class="cr-modal">
-                <div class="cr-header">
-                    <div class="cr-icon">
-                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-                    </div>
-                    <div>
-                        <h2 class="cr-title">새 학년 생성</h2>
-                        <p class="cr-subtitle">학교 이름과 학년을 입력하면 방 코드가 만들어집니다</p>
-                    </div>
-                    <button id="btn-cr-close" class="cr-close-btn">&times;</button>
-                </div>
-                <div class="cr-body">
-                    <div class="cr-field-row">
-                        <div class="cr-field">
-                            <label class="cr-label">학교 이름</label>
-                            <input id="cr-school" type="text" class="cr-input" placeholder="예) 이음초" maxlength="20" autocomplete="off">
-                        </div>
-                        <div class="cr-field cr-field-grade">
-                            <label class="cr-label">학년</label>
-                            <select id="cr-grade" class="cr-input cr-select">
-                                <option value="">선택</option>
-                                <option value="1학년">1학년</option>
-                                <option value="2학년">2학년</option>
-                                <option value="3학년">3학년</option>
-                                <option value="4학년">4학년</option>
-                                <option value="5학년">5학년</option>
-                                <option value="6학년">6학년</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="cr-preview" id="cr-preview">
-                        <span class="cr-preview-label">생성될 방 코드</span>
-                        <span class="cr-preview-code" id="cr-preview-code">—</span>
-                    </div>
-                    <div id="cr-error" class="cr-error hide"></div>
-                </div>
-                <div class="cr-footer">
-                    <button id="btn-cr-cancel" class="cr-btn-cancel">취소</button>
-                    <button id="btn-cr-confirm" class="cr-btn-confirm" disabled>생성하기</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- 슈퍼관리자 방 관리 모달 -->
-        <div id="room-manage-overlay" class="cr-overlay hide">
-            <div class="cr-modal rm-modal">
-                <div class="cr-header">
-                    <div class="cr-icon" style="background: linear-gradient(135deg,#6366f1,#4f46e5);">
-                        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-                    </div>
-                    <div>
-                        <h2 class="cr-title">방 관리</h2>
-                        <p class="cr-subtitle">생성된 학년 방 목록을 관리합니다</p>
-                    </div>
-                    <button id="btn-rm-close" class="cr-close-btn">&times;</button>
-                </div>
-                <div class="rm-body">
-                    <ul id="rm-room-list" class="rm-room-list">
-                        <li class="rm-loading">불러오는 중...</li>
-                    </ul>
-                </div>
-                <div class="cr-footer" style="justify-content:flex-end;">
-                    <button id="btn-rm-done" class="cr-btn-cancel" style="flex:0 0 auto; padding:13px 28px;">닫기</button>
-                </div>
-            </div>
-        </div>
-
 
     </div>
 

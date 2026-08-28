@@ -977,7 +977,7 @@ const App = {
         try {
             const data = await FirebaseDB.load(this.state.roomCode);
             if (!data) {
-                this.showToast('서버에 데이터가 없습니다. 방 코드를 확인해주세요.');
+                this.showToast('아직 저장된 데이터가 없습니다. 설정부터 시작해주세요.');
                 return;
             }
             // 로그인 상태·UI 상태는 유지하고 나머지만 덮어씀
