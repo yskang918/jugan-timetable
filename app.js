@@ -1631,7 +1631,9 @@ const App = {
                 h += `<div class="ts-period-label">${p + 1}</div>`;
                 this.days.forEach(d => {
                     if (p >= this.state.config.periods[d]) { h += `<div class="ts-tile ts-tile-none"></div>`; return; }
-                    const val = data[d][p] || '';
+                    // 1단계는 전담 고정 배정만 다루는 단계 — 전담 잠금이 안 된 칸(일반 과목 등)은 화면에 보이지 않게 숨긴다.
+                    const isLocked = !!(wData.specialistCells?.[cStr]?.[d]?.[p]);
+                    const val = isLocked ? (data[d][p] || '') : '';
                     const isSel = !!(sel && sel.cls === cStr && sel.day === d && sel.p === p);
                     // 색은 "지금 이 칸에 있는 과목 이름"을 기준으로 정함 (스왑해도 색이 자리가 아니라 과목을 따라가게)
                     const sp = val ? this._spByName(val) : null;
@@ -1711,7 +1713,18 @@ const App = {
 
     tileInputCommit(cStr, d, p, val) {
         const wData = this.state.history[this.state.currentWeek];
-        wData.classes[cStr][d][p] = val.trim();
+        const trimmed = val.trim();
+        wData.classes[cStr][d][p] = trimmed;
+        // 1단계에서 직접 입력한 내용은 곧 "전담 고정 배정"이므로 잠금 상태도 함께 맞춘다.
+        if (!wData.specialistCells) wData.specialistCells = {};
+        const sc = wData.specialistCells;
+        if (trimmed) {
+            if (!sc[cStr]) sc[cStr] = {};
+            if (!sc[cStr][d]) sc[cStr][d] = {};
+            sc[cStr][d][p] = true;
+        } else if (sc[cStr]?.[d]) {
+            delete sc[cStr][d][p];
+        }
         this.state.tileSel = null;
         this.state.isDirty = true;
         this.saveData();
