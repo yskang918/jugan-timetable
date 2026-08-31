@@ -512,6 +512,46 @@ td.duplicate-error { background-color: #fee2e2 !important; border: 2px solid #ef
     font-size: 0.5rem; opacity: 0.55; pointer-events: none;
 }
 
+/* --- 튜토리얼 --- */
+#tutorial-overlay { position: fixed; inset: 0; z-index: 10060; }
+#tutorial-overlay.hide { display: none !important; }
+/* 구멍 바깥을 아주 큰 그림자로 덮어 어둡게 만든다 */
+#tut-spot {
+    position: fixed; border-radius: 12px;
+    box-shadow: 0 0 0 9999px rgba(15, 23, 42, 0.72);
+    outline: 2px solid rgba(255,255,255,0.9);
+    pointer-events: none;
+    transition: top 0.25s ease, left 0.25s ease, width 0.25s ease, height 0.25s ease;
+}
+#tut-card {
+    position: fixed; width: 360px; max-width: calc(100vw - 24px);
+    background: #fff; border-radius: 16px; padding: 18px 20px 16px;
+    box-shadow: 0 20px 50px -12px rgba(0,0,0,0.5);
+    transition: top 0.25s ease, left 0.25s ease;
+}
+.tut-step { font-size: 0.72rem; font-weight: 800; color: var(--primary-color); margin-bottom: 6px; }
+.tut-title { font-size: 1.08rem; font-weight: 800; color: var(--text-main); margin-bottom: 8px; }
+.tut-text { font-size: 0.88rem; line-height: 1.6; color: #475569; }
+.tut-text b { color: var(--text-main); }
+.tut-actions {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-top: 16px; padding-top: 13px; border-top: 1px solid var(--border-color);
+}
+.tut-nav { display: flex; gap: 7px; }
+.tut-skip {
+    background: none; border: none; color: #94a3b8;
+    font-size: 0.8rem; font-weight: 700; cursor: pointer; padding: 6px 2px;
+}
+.tut-skip:hover { color: var(--text-sub); text-decoration: underline; }
+.tut-prev, .tut-next {
+    border-radius: 9px; font-size: 0.85rem; font-weight: 800;
+    padding: 8px 16px; cursor: pointer; border: 1.5px solid var(--border-color);
+}
+.tut-prev { background: #fff; color: var(--text-sub); }
+.tut-prev:hover { background: #f1f5f9; }
+.tut-next { background: var(--primary-color); border-color: var(--primary-color); color: #fff; }
+.tut-next:hover { background: var(--primary-dark); border-color: var(--primary-dark); }
+
 /* --- 시간표 저장소 (첫 화면) --- */
 #library-overlay {
     position: fixed; inset: 0; z-index: 9998;

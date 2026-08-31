@@ -1620,6 +1620,9 @@ const App = {
     /* --- 1단계: 반별 시간표 크게 보기·정리 (타일 보드) --- */
     openTileStep() {
         this.state.tileSel = null;
+        // 다른 화면을 확실히 닫아야 _renderActiveStep()이 1단계를 그린다
+        ['library-overlay', 'step2-overlay', 'step3-overlay', 'settings-overlay']
+            .forEach(id => document.getElementById(id)?.classList.add('hide'));
         document.getElementById('tile-step-overlay').classList.remove('hide');
         this.renderTileStep();
     },
@@ -1657,8 +1660,8 @@ const App = {
         this.openStep2();
     },
     openStep2() {
-        document.getElementById('tile-step-overlay').classList.add('hide');
-        document.getElementById('settings-overlay').classList.add('hide');
+        ['library-overlay', 'tile-step-overlay', 'step3-overlay', 'settings-overlay']
+            .forEach(id => document.getElementById(id)?.classList.add('hide'));
         document.getElementById('step2-overlay').classList.remove('hide');
         // 1단계에서 전담 배정을 고쳤을 수 있으므로 들어올 때마다 다시 계산
         this._syncSpecialistTargets(this.state.currentWeek);
@@ -1676,9 +1679,8 @@ const App = {
     /* --- 3단계: 반별 시간표 배정 --- */
     openStep3() {
         this.state.tileSel = null;
-        document.getElementById('tile-step-overlay').classList.add('hide');
-        document.getElementById('step2-overlay').classList.add('hide');
-        document.getElementById('settings-overlay').classList.add('hide');
+        ['library-overlay', 'tile-step-overlay', 'step2-overlay', 'settings-overlay']
+            .forEach(id => document.getElementById(id)?.classList.add('hide'));
         document.getElementById('step3-overlay').classList.remove('hide');
         this.renderStep3();
     },
@@ -2098,7 +2100,9 @@ const App = {
                 const cls = `ts-tile${!val ? ' ts-tile-empty' : ''}${isSel ? ' ts-tile-selected' : ''}` +
                             `${manual ? ' ts-tile-manual' : ''}${(!onlyFixed && isLocked) ? ' ts-tile-fixed' : ''}`;
 
-                if (isSel) {
+                // 3단계(onlyFixed=false)는 자리 바꾸기만 허용 — 글자 입력·삭제는 막는다.
+                // (차시 수가 틀어지지 않게 하려는 것)
+                if (isSel && onlyFixed) {
                     h += `<div class="${cls}" data-cls="${cStr}" data-day="${d}" data-idx="${p}">
                         <input type="text" class="ts-tile-input" value="${val}" data-cls="${cStr}" data-day="${d}" data-idx="${p}">
                         ${val ? `<div class="ts-tile-x" data-cls="${cStr}" data-day="${d}" data-idx="${p}">✕</div>` : ''}
@@ -2121,6 +2125,161 @@ const App = {
         body.innerHTML = h;
         const input = body.querySelector('.ts-tile-input');
         if (input) { input.focus(); input.select(); }
+    },
+
+    /* --- 튜토리얼: 설명할 곳만 밝게 비추며 순서대로 안내 --- */
+
+    _tutorialSteps() {
+        const hideAll = (keep) => ['library-overlay', 'tile-step-overlay', 'step2-overlay', 'step3-overlay', 'settings-overlay']
+            .forEach(id => { if (id !== keep) document.getElementById(id)?.classList.add('hide'); });
+        return [
+            {
+                before: () => { this.openLibrary(); },
+                sel: '.lib-grid',
+                title: '① 시간표 저장소',
+                text: '앱을 열면 가장 먼저 나오는 화면입니다. 지금까지 만든 주차 시간표가 카드로 쌓여 있어요.<br>카드를 누르면 그 주차를 이어서 편집합니다. 막대는 얼마나 채워졌는지 보여줍니다.'
+            },
+            {
+                sel: '.lib-new',
+                title: '새 주차 만들기',
+                text: '새로운 한 주를 시작할 때 누릅니다. 이름을 정할 수 있어서 <b>“9월 2주”</b>처럼 알아보기 쉽게 저장할 수 있어요.<br>새 주차에는 전담 시간표가 자동으로 채워집니다.'
+            },
+            {
+                before: () => { hideAll('tile-step-overlay'); this.openTileStep(); },
+                sel: '#tile-step-body .ts-class-card',
+                title: '② 1단계 — 전담 시간표 확인',
+                text: '설정에 등록해 둔 <b>전담 수업이 자동으로 배정된 상태</b>로 시작합니다.<br>과목을 누르면 분홍색으로 흔들리고, 다른 칸을 누르면 두 과목의 <b>자리가 바뀝니다</b>. ✕를 누르면 지워집니다.'
+            },
+            {
+                sel: '#tile-step-overlay .ts-header-sub',
+                title: '이번 주만 고정하고 싶다면',
+                text: '전담이 아닌 과목도 그 주에만 자리를 잡아둘 수 있습니다.<br><b>빈 칸을 누르고 과목명을 입력</b>하면 그 자리에 고정됩니다. 손으로 고정한 칸은 주황색 점선으로 표시돼요.'
+            },
+            {
+                sel: '#btn-ts-settings',
+                title: '설정은 여기에',
+                text: '학년·학급 수·요일별 교시 수, 운영 과목, 전담 시간표를 한 화면에서 설정합니다.<br>전담 시간표를 여기서 만들어 두면 1단계에 자동으로 반영됩니다.'
+            },
+            {
+                before: () => { hideAll('step2-overlay'); this.openStep2(); },
+                sel: '#step2-body .s2-grid',
+                title: '③ 2단계 — 과목별 이번 주 차시',
+                text: '이번 주에 과목마다 몇 차시를 할지 정합니다.<br>1단계에서 자리를 잡은 과목은 <b>“1단계 고정”</b>으로 자동 계산되니, 나머지 과목만 입력하면 됩니다.'
+            },
+            {
+                sel: '#step2-body .s2-toggle',
+                title: '연차시 설정',
+                text: '이 토글을 켜면 그 과목은 배정할 때 <b>2차시가 붙어서</b> 들어갑니다.<br>미술처럼 두 시간 이어서 하는 과목에 켜두면 좋아요.'
+            },
+            {
+                before: () => { hideAll('step3-overlay'); this.openStep3(); },
+                sel: '#step3-body .s3-card',
+                title: '④ 3단계 — 반별 시간표 배정',
+                text: '1단계의 고정 칸(🔒)은 그대로 두고, 나머지 칸을 2단계 차시에 맞춰 채웁니다.<br>여기서는 과목을 눌러 <b>자리만 서로 바꿀 수 있습니다</b>(차시 수가 틀어지지 않도록).'
+            },
+            {
+                sel: '#step3-body .s3-status',
+                title: '반마다 실시간 확인',
+                text: '반별로 <b>배정 / 목표</b> 차시를 바로 보여줍니다.<br>초록이면 딱 맞는 것이고, <b style="color:#dc2626">빨간색</b>이면 목표와 다르다는 뜻이니 확인이 필요합니다.'
+            },
+            {
+                sel: '#step3-overlay .ts-next-btn',
+                title: '다시 배정',
+                text: '마음에 안 들면 언제든 누르세요.<br>고정된 칸은 그대로 두고 나머지만 지운 뒤 새로 배정합니다.'
+            },
+            {
+                sel: '#step3-overlay .ts-old-view-btn',
+                title: '저장 · 인쇄',
+                text: '완성한 시간표를 <b>PDF</b>나 <b>이미지</b> 파일로 저장할 수 있습니다. A4 한 장에 가로 2반씩 깔끔하게 들어갑니다.<br>바로 인쇄도 가능합니다.'
+            },
+            {
+                before: () => { hideAll('library-overlay'); this.openLibrary(); },
+                sel: null,
+                title: '준비 끝!',
+                text: '<b>저장소 → 1단계(전담 확인) → 2단계(차시 정하기) → 3단계(배정·출력)</b><br>이 순서로 진행하시면 됩니다.<br><br>작업 내용은 <b>자동으로 저장</b>되니 따로 저장 버튼을 누를 필요가 없어요.<br>튜토리얼은 첫 화면의 🎓 버튼으로 언제든 다시 볼 수 있습니다.'
+            }
+        ];
+    },
+
+    tutorialStart() {
+        this._tutIdx = 0;
+        this._tutList = this._tutorialSteps();
+        document.getElementById('tutorial-overlay').classList.remove('hide');
+        if (!this._tutResizeBound) {
+            this._tutResizeBound = () => { if (!document.getElementById('tutorial-overlay').classList.contains('hide')) this._tutorialPaint(); };
+            window.addEventListener('resize', this._tutResizeBound);
+        }
+        this._tutorialShow();
+    },
+
+    tutorialNext() {
+        if (this._tutIdx >= this._tutList.length - 1) { this.tutorialEnd(); return; }
+        this._tutIdx++;
+        this._tutorialShow();
+    },
+
+    tutorialPrev() {
+        if (this._tutIdx <= 0) return;
+        this._tutIdx--;
+        this._tutorialShow();
+    },
+
+    tutorialEnd() {
+        document.getElementById('tutorial-overlay').classList.add('hide');
+        this.openLibrary();
+    },
+
+    async _tutorialShow() {
+        const step = this._tutList[this._tutIdx];
+        if (step.before) { try { step.before(); } catch (e) {} }
+        await new Promise(r => setTimeout(r, 260));   // 화면이 그려질 시간을 준다
+
+        document.getElementById('tut-step').textContent = `${this._tutIdx + 1} / ${this._tutList.length}`;
+        document.getElementById('tut-title').innerHTML = step.title;
+        document.getElementById('tut-text').innerHTML = step.text;
+        document.getElementById('tut-prev').style.visibility = this._tutIdx === 0 ? 'hidden' : 'visible';
+        document.getElementById('tut-next').textContent = this._tutIdx === this._tutList.length - 1 ? '시작하기' : '다음';
+        this._tutorialPaint();
+    },
+
+    // 대상 위치에 구멍을 뚫고(밝게), 설명 카드를 그 옆에 놓는다
+    _tutorialPaint() {
+        const step = this._tutList[this._tutIdx];
+        const spot = document.getElementById('tut-spot');
+        const card = document.getElementById('tut-card');
+        const el = step.sel ? document.querySelector(step.sel) : null;
+
+        if (!el) {
+            // 특정 대상이 없는 안내 — 화면 전체를 어둡게 하고 가운데에 카드
+            spot.style.opacity = '0';
+            spot.style.width = spot.style.height = '0px';
+            spot.style.top = '50%'; spot.style.left = '50%';
+            card.style.top = '50%';
+            card.style.left = '50%';
+            card.style.transform = 'translate(-50%, -50%)';
+            return;
+        }
+
+        el.scrollIntoView({ block: 'center', behavior: 'instant' });
+        const r = el.getBoundingClientRect();
+        const pad = 8;
+        spot.style.opacity = '1';
+        spot.style.transform = 'none';
+        spot.style.top = `${r.top - pad}px`;
+        spot.style.left = `${r.left - pad}px`;
+        spot.style.width = `${r.width + pad * 2}px`;
+        spot.style.height = `${r.height + pad * 2}px`;
+
+        // 카드는 대상 아래에 두되, 공간이 없으면 위로
+        const cw = 360, gap = 16;
+        const ch = card.offsetHeight || 200;
+        let top = r.bottom + gap;
+        if (top + ch > window.innerHeight - 12) top = Math.max(12, r.top - gap - ch);
+        let left = r.left + r.width / 2 - cw / 2;
+        left = Math.max(12, Math.min(left, window.innerWidth - cw - 12));
+        card.style.transform = 'none';
+        card.style.top = `${top}px`;
+        card.style.left = `${left}px`;
     },
 
     /* --- 시간표 저장소 (첫 화면) --- */
