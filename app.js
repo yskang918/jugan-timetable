@@ -1728,29 +1728,8 @@ const App = {
         if (input) { input.focus(); input.select(); }
     },
 
-    // 고정된 칸은 남기고 나머지만 비움
-    step3ClearUnfixed() {
-        this.showConfirm('비우기', '고정된 칸은 그대로 두고, 나머지 배정만 모두 지웁니다.<br><br>계속할까요?').then(r => {
-            if (!r) return;
-            const wData = this.state.history[this.state.currentWeek];
-            for (let c = 1; c <= this.state.config.classCount; c++) {
-                const cStr = String(c);
-                this.days.forEach(d => {
-                    const arr = wData.classes[cStr][d] || [];
-                    for (let p = 0; p < arr.length; p++) {
-                        if (!wData.specialistCells?.[cStr]?.[d]?.[p]) arr[p] = '';
-                    }
-                });
-            }
-            this.state.isDirty = true;
-            this.saveData();
-            this.renderStep3();
-            this.showToast('고정된 칸만 남기고 비웠습니다.');
-        });
-    },
-
-    // 2단계 차시를 목표로, 빈 칸에만 자동 배정 (고정 칸은 건드리지 않음)
-    step3AutoAssign() {
+    // 고정된 칸은 그대로 두고 나머지를 지운 뒤 2단계 차시에 맞춰 다시 배정
+    step3Reassign() {
         const wData = this.state.history[this.state.currentWeek];
         const selected = this._step2Subjects()
             .map(s => s.name)
@@ -1763,10 +1742,103 @@ const App = {
             this.showAlert('배정할 과목 없음', '2단계에서 과목별 차시를 먼저 입력해주세요.');
             return;
         }
-        this.executeRandomAssign(selected, { onDone: () => {
-            this.renderStep3();
-            this.showToast('✅ 자동 배정 완료 — 반별 상태창에서 확인하세요.');
-        }});
+        this.showConfirm('다시 배정', '고정된 칸(자물쇠)은 그대로 두고,<br>나머지 배정을 지운 뒤 2단계 차시에 맞춰 다시 배정합니다.<br><br>계속할까요?').then(r => {
+            if (!r) return;
+            // 1) 고정되지 않은 칸 비우기
+            for (let c = 1; c <= this.state.config.classCount; c++) {
+                const cStr = String(c);
+                this.days.forEach(d => {
+                    const arr = wData.classes[cStr][d] || [];
+                    for (let p = 0; p < arr.length; p++) {
+                        if (!wData.specialistCells?.[cStr]?.[d]?.[p]) arr[p] = '';
+                    }
+                });
+            }
+            // 2) 빈 칸에 다시 배정
+            this.state.isDirty = true;
+            this.executeRandomAssign(selected, { onDone: () => {
+                this.renderStep3();
+                this.showToast('✅ 다시 배정했습니다 — 반별 상태창에서 확인하세요.');
+            }});
+        });
+    },
+
+    /* --- 3단계: A4 인쇄 (가로 2반씩, 한 페이지 2열 x 7줄) --- */
+    step3ExportPdf() {
+        const cc = this.state.config.classCount;
+        const maxP = Math.max(...Object.values(this.state.config.periods));
+        const wData = this.state.history[this.state.currentWeek];
+        const gradeText = this.state.config.grade ? `${this.state.config.grade}학년 ` : '';
+
+        const cards = [];
+        for (let c = 1; c <= cc; c++) {
+            const cStr = String(c);
+            const cd = wData.classes[cStr] || {};
+            let rows = '';
+            for (let p = 0; p < maxP; p++) {
+                rows += `<tr><td class="p3-pd">${p + 1}</td>`;
+                this.days.forEach(d => {
+                    if (p >= this.state.config.periods[d]) { rows += `<td class="p3-off"></td>`; return; }
+                    const v = (cd[d] || [])[p] || '';
+                    const sp = v ? this._spByName(v) : null;
+                    const fixed = !!(wData.specialistCells?.[cStr]?.[d]?.[p]);
+                    const bg = sp && sp.bg ? ` style="background:${sp.bg};"` : (fixed ? ' style="background:#f3f4f6;"' : '');
+                    rows += `<td${bg}>${v}</td>`;
+                });
+                rows += `</tr>`;
+            }
+            cards.push(`<div class="p3-card">
+                <table class="p3-table">
+                    <colgroup><col class="p3-col-pd">${this.days.map(() => '<col>').join('')}</colgroup>
+                    <thead>
+                        <tr><th class="p3-class" colspan="${this.days.length + 1}">${gradeText}${c}반</th></tr>
+                        <tr><th class="p3-day">교시</th>${this.days.map(d => `<th class="p3-day">${d}</th>`).join('')}</tr>
+                    </thead>
+                    <tbody>${rows}</tbody>
+                </table>
+            </div>`);
+        }
+
+        const PER_PAGE = 14; // 2열 x 7줄
+        let pages = '';
+        for (let i = 0; i < cards.length; i += PER_PAGE) {
+            pages += `<div class="p3-page${i ? ' p3-break' : ''}">
+                <div class="p3-title">${gradeText}${this.state.currentWeek}주차 반별 시간표</div>
+                <div class="p3-grid">${cards.slice(i, i + PER_PAGE).join('')}</div>
+            </div>`;
+        }
+
+        const css = `
+            @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&display=swap');
+            * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            body { margin:0; font-family:'Noto Sans KR','Malgun Gothic',sans-serif; background:#fff; color:#111827; }
+            @page { size: A4 portrait; margin: 10mm 9mm; }
+            .p3-break { page-break-before: always; }
+            .p3-title { text-align:center; font-size:15px; font-weight:800; letter-spacing:1px;
+                        padding-bottom:7px; margin-bottom:9px; border-bottom:2px solid #1e293b; }
+            .p3-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:7mm 6mm; }
+            .p3-card { page-break-inside:avoid; }
+            .p3-table { width:100%; border-collapse:collapse; table-layout:fixed; text-align:center; }
+            .p3-col-pd { width:26px; }
+            .p3-table th, .p3-table td {
+                border:1px solid #cbd5e1; padding:4.5px 2px; font-size:10.5px; font-weight:600;
+                overflow:hidden; white-space:nowrap; text-overflow:ellipsis; letter-spacing:-0.5px; height:22px;
+            }
+            .p3-class { background:#1e293b; color:#fff; font-size:12.5px; font-weight:800; padding:6px 4px; letter-spacing:1px; }
+            .p3-day { background:#eef2f7; color:#334155; font-weight:800; font-size:10px; }
+            .p3-pd { background:#f8fafc; color:#94a3b8; font-weight:800; font-size:9.5px; }
+            .p3-off { background:#e5e7eb; }
+        `;
+
+        const win = window.open('', '_blank', 'width=980,height=760');
+        if (!win) { this.showAlert('팝업 차단됨', '브라우저가 새 창을 막았습니다.<br>이 사이트의 팝업을 허용한 뒤 다시 눌러주세요.'); return; }
+        win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8">
+            <title>${gradeText}${this.state.currentWeek}주차 반별 시간표</title>
+            <style>${css}</style></head><body>${pages}</body></html>`);
+        win.document.close();
+        win.focus();
+        // 웹폰트가 적용된 뒤 인쇄 대화상자를 띄운다 (대상에서 "PDF로 저장" 선택)
+        setTimeout(() => win.print(), 600);
     },
 
     // 이 과목이 반별로 몇 차시씩 들어가 있는지 (반마다 다르면 uniform=false)
