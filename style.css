@@ -516,6 +516,12 @@ td.duplicate-error { background-color: #fee2e2 !important; border: 2px solid #ef
 }
 .s3-badge-ok   { color: #15803d; background: #dcfce7; }
 .s3-badge-todo { color: #a16207; background: #fef9c3; }
+/* 차시가 안 맞는 반은 빨갛게 확 띄게 */
+.s3-badge-bad {
+    color: #fff; background: #dc2626;
+    font-size: 0.68rem; padding: 3px 10px;
+    box-shadow: 0 0 0 3px rgba(220,38,38,0.18);
+}
 
 .s3-row { flex: 1; min-height: 0; display: flex; gap: 8px; }
 .s3-grid-wrap { flex: 1; min-width: 0; display: flex; }
@@ -532,8 +538,12 @@ td.duplicate-error { background-color: #fee2e2 !important; border: 2px solid #ef
 }
 .s3-srow b { font-variant-numeric: tabular-nums; }
 .s3-ok    { color: #15803d; background: #f0fdf4; }
-.s3-over  { color: #b91c1c; background: #fef2f2; }
-.s3-under { color: #a16207; background: #fefce8; }
+/* 목표와 안 맞는 과목은 초과·부족 모두 빨간 글씨로 눈에 띄게 */
+.s3-over, .s3-under {
+    color: #dc2626; background: #fef2f2;
+    font-weight: 800; border: 1px solid #fecaca;
+}
+.s3-over b, .s3-under b { color: #dc2626; }
 
 @media (max-width: 1500px) { .ts-body.s3-body { grid-template-columns: repeat(2, 1fr); overflow-y: auto; } }
 @media (max-width: 1000px) { .ts-body.s3-body { grid-template-columns: 1fr; } }

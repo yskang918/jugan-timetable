@@ -1715,7 +1715,7 @@ const App = {
             h += `<div class="ts-class-card s3-card">
                 <div class="ts-class-title s3-title">
                     ${c}반
-                    <span class="s3-badge ${done ? 's3-badge-ok' : 's3-badge-todo'}">${done ? '완료' : (st.empty ? `빈칸 ${st.empty}` : '차시 불일치')}</span>
+                    <span class="s3-badge ${done ? 's3-badge-ok' : (st.empty ? 's3-badge-todo' : 's3-badge-bad')}">${done ? '완료' : (st.empty ? `빈칸 ${st.empty}` : '⚠ 차시 불일치')}</span>
                 </div>
                 <div class="s3-row">
                     <div class="s3-grid-wrap">${this._tileGridHtml(cStr, false)}</div>
