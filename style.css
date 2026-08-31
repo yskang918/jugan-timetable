@@ -512,6 +512,13 @@ td.duplicate-error { background-color: #fee2e2 !important; border: 2px solid #ef
     font-size: 0.5rem; opacity: 0.55; pointer-events: none;
 }
 
+/* 예전 화면(상단 로고·메뉴탭 + 본문)은 더 이상 쓰지 않는다.
+   저장소·1~3단계·설정이 모두 전체화면 오버레이라 필요 없고,
+   CSS로 처음부터 숨겨야 새로고침할 때 잠깐 스쳐 보이지 않는다.
+   ※ 모달·토스트는 #app 안에 있어 통째로 숨기면 안 되므로 이 둘만 숨김. */
+.main-header,
+main.container { display: none !important; }
+
 /* --- 튜토리얼 --- */
 #tutorial-overlay { position: fixed; inset: 0; z-index: 10060; }
 #tutorial-overlay.hide { display: none !important; }
