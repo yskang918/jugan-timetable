@@ -945,13 +945,22 @@ const App = {
             const go = await this.showConfirm('전담 미저장 경고', '전담 데이터가 서버에 저장되지 않았습니다.<br>저장하지 않고 이동하면 다른 기기에 반영되지 않습니다.<br><br>그래도 이동하시겠습니까?');
             if (!go) return;
         }
+        // 설정은 전체화면 오버레이라 일반 섹션 전환과 별개로 처리한다.
+        const settingsOverlay = document.getElementById('settings-overlay');
+        if (menuId === 'settings') {
+            document.getElementById('tile-step-overlay')?.classList.add('hide');
+            settingsOverlay.classList.remove('hide');
+            this.renderSettingsView();
+            this.renderSpecialistView();
+            return;
+        }
+        settingsOverlay?.classList.add('hide');
         // timetable-all과 timetable은 같은 섹션을 공유하므로 중복 hide 방지
         const uniqueMenus = new Set(Object.values(this.dom.menus));
         uniqueMenus.forEach(v => { if(v) v.classList.add('hide'); });
         if (this.dom.menus[menuId]) this.dom.menus[menuId].classList.remove('hide');
         if (menuId === 'timetable') this.renderTimetableLayout('single');
         else if (menuId === 'timetable-all') this.renderTimetableLayout('all');
-        else if (menuId === 'settings') { this.renderSettingsView(); this.renderSpecialistView(); }
         else if (menuId === 'specialist-teacher') this.renderSpecialistTeacherView();
         else if (menuId === 'validation') this.calculateAndRenderValidationView();
     },
@@ -1605,7 +1614,13 @@ const App = {
     openSettingsFromTileStep() {
         this.state.tileSel = null;
         document.getElementById('tile-step-overlay').classList.add('hide');
-        this.switchMenu('settings');
+        document.getElementById('settings-overlay').classList.remove('hide');
+        this.renderSettingsView();
+        this.renderSpecialistView();
+    },
+    closeSettingsOverlay() {
+        document.getElementById('settings-overlay').classList.add('hide');
+        this.openTileStep();
     },
     // 2단계는 아직 없음 — 자리만 만들어둠
     tileStepNext() {

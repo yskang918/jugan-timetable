@@ -465,6 +465,16 @@ td.duplicate-error { background-color: #fee2e2 !important; border: 2px solid #ef
 }
 .ts-next-btn:hover { background: var(--primary-dark); }
 
+/* 설정 전체화면 오버레이 — 1단계 화면과 같은 헤더를 쓰되 본문은 일반 흐름 */
+#settings-overlay {
+    position: fixed; inset: 0; z-index: 9998;
+    display: flex; flex-direction: column;
+    background: #f1f5f9;
+}
+#settings-overlay.hide { display: none !important; }
+.ts-body-plain { flex: 1; overflow-y: auto; padding: 24px; }
+.ts-body-plain .settings-page { max-width: 1600px; margin: 0 auto; padding-bottom: 40px; }
+
 .ts-body {
     flex: 1; overflow-y: auto; padding: 24px;
     display: grid; gap: 20px;
