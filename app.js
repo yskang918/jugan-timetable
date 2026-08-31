@@ -1771,13 +1771,14 @@ const App = {
         });
     },
 
-    /* --- 3단계: A4 인쇄 (가로 2반씩, 한 페이지 2열 x 7줄) --- */
-    step3ExportPdf() {
+    /* --- 3단계: A4 출력 (인쇄 / PDF 저장 / 이미지 저장) --- */
+
+    // 반별 시간표 카드 HTML 목록
+    _step3Cards() {
         const cc = this.state.config.classCount;
         const maxP = Math.max(...Object.values(this.state.config.periods));
         const wData = this.state.history[this.state.currentWeek];
         const gradeText = this.state.config.grade ? `${this.state.config.grade}학년 ` : '';
-
         const cards = [];
         for (let c = 1; c <= cc; c++) {
             const cStr = String(c);
@@ -1806,34 +1807,51 @@ const App = {
                 </table>
             </div>`);
         }
+        return cards;
+    },
 
-        const PER_PAGE = 14; // 2열 x 7줄
-        let pages = '';
-        for (let i = 0; i < cards.length; i += PER_PAGE) {
-            pages += `<div class="p3-page${i ? ' p3-break' : ''}">
+    // 한 페이지에 들어갈 반 수 (가로 2 x 세로 7)
+    _step3PerPage() { return 14; },
+
+    _step3Pages() {
+        const cards = this._step3Cards();
+        const gradeText = this.state.config.grade ? `${this.state.config.grade}학년 ` : '';
+        const per = this._step3PerPage();
+        const pages = [];
+        for (let i = 0; i < cards.length; i += per) {
+            pages.push(`<div class="p3-page">
                 <div class="p3-title">${gradeText}${this.state.currentWeek}주차 반별 시간표</div>
-                <div class="p3-grid">${cards.slice(i, i + PER_PAGE).join('')}</div>
-            </div>`;
+                <div class="p3-grid">${cards.slice(i, i + per).join('')}</div>
+            </div>`);
         }
+        return pages;
+    },
 
-        const css = `
-            @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&display=swap');
-            * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            /* body에 height:100%를 주면 인쇄 시 본문이 인쇄 가능 영역보다 커져
-               한 줄이 다음 장으로 밀린다. 페이지 높이는 .p3-page에서만 지정한다. */
-            body { margin:0; font-family:'Noto Sans KR','Malgun Gothic',sans-serif; background:#fff; color:#111827; }
-            @page { size: A4 portrait; margin: 10mm 12mm; }
-            /* 페이지 높이를 꽉 채우되 절대 넘치지 않게 해서 A4 한 장으로 인쇄되도록 함.
-               (A4 297mm - 위아래 여백 20mm = 277mm 이지만, 브라우저 반올림으로
-                한 줄이 다음 장으로 밀리는 걸 막기 위해 여유를 둔다) */
-            .p3-page { height: 268mm; overflow: hidden; display:flex; flex-direction:column; }
-            .p3-break { page-break-before: always; }
+    // 공통 스타일. mode: 'print'(mm 기준) | 'capture'(A4 96dpi 픽셀 기준)
+    _step3Css(mode) {
+        // 캡처용: A4 용지 한 장 = 794x1123px(96dpi). 안쪽 34px을 여백으로 두고
+        // 나머지 726x1055px을 본문이 채우게 해서, 만들어진 이미지 비율이 A4와 정확히 같아진다.
+        const pageBox = mode === 'print' ? 'height: 262mm;' : 'width: 726px; height: 1055px;';
+        const sheetRule = mode === 'capture'
+            ? '.p3-sheet { width:794px; height:1123px; padding:34px; background:#fff; }'
+            : '';
+        const pageRule = mode === 'print' ? '@page { size: A4 portrait; margin: 10mm 12mm; }' : '';
+        const bodyRule = mode === 'print'
+            ? "body { margin:0; font-family:'Noto Sans KR','Malgun Gothic',sans-serif; background:#fff; color:#111827; }"
+            : '';
+        return `
+            ${pageRule}
+            ${bodyRule}
+            ${sheetRule}
+            .p3-root { font-family:'Noto Sans KR','Malgun Gothic',sans-serif; color:#111827; background:#fff; }
+            .p3-root * { box-sizing:border-box; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+            .p3-page { ${pageBox} overflow:hidden; display:flex; flex-direction:column; background:#fff; }
+            .p3-page + .p3-page { page-break-before: always; }
             .p3-title { flex:0 0 auto; text-align:center; font-size:15px; font-weight:800; letter-spacing:1px;
                         padding-bottom:8px; margin-bottom:10px; border-bottom:2px solid #1e293b; }
             .p3-grid { flex:1; min-height:0; display:grid; grid-template-columns:repeat(2,1fr);
-                       grid-auto-rows:1fr; gap:8mm 10mm; }
-            /* 표가 지나치게 가로로 길어 보이지 않도록 폭을 제한하고 가운데 정렬 */
-            .p3-card { min-height:0; display:flex; justify-content:center; page-break-inside:avoid; }
+                       grid-auto-rows:1fr; gap:7mm 9mm; }
+            .p3-card { min-height:0; display:flex; justify-content:center; align-items:stretch; page-break-inside:avoid; }
             .p3-table { width:100%; max-width:74mm; height:100%; border-collapse:collapse;
                         table-layout:fixed; text-align:center; }
             .p3-col-pd { width:24px; }
@@ -1847,16 +1865,84 @@ const App = {
             .p3-pd { background:#f8fafc; color:#94a3b8; font-weight:800; font-size:9.5px; }
             .p3-off { background:#e5e7eb; }
         `;
+    },
 
+    _step3FileName(ext) {
+        const g = this.state.config.grade ? `${this.state.config.grade}학년_` : '';
+        return `${g}${this.state.currentWeek}주차_반별시간표.${ext}`;
+    },
+
+    // 화면 밖에 A4 크기(px)로 그려서 캔버스로 캡처 — 페이지 경계가 확실해짐
+    async _step3CapturePages() {
+        if (typeof html2canvas === 'undefined') {
+            this.showAlert('오류', '이미지 변환 기능을 불러오지 못했습니다.<br>새로고침 후 다시 시도해주세요.');
+            return null;
+        }
+        const host = document.createElement('div');
+        host.className = 'p3-root';
+        host.style.cssText = 'position:fixed; left:-10000px; top:0; width:794px; background:#fff; z-index:-1;';
+        const sheets = this._step3Pages().map(pg => `<div class="p3-sheet">${pg}</div>`).join('');
+        host.innerHTML = `<style>${this._step3Css('capture')}</style>${sheets}`;
+        document.body.appendChild(host);
+        try { if (document.fonts && document.fonts.ready) await document.fonts.ready; } catch (e) {}
+        await new Promise(r => setTimeout(r, 250));
+        const canvases = [];
+        for (const el of host.querySelectorAll('.p3-sheet')) {
+            canvases.push(await html2canvas(el, { scale: 2, backgroundColor: '#ffffff', logging: false }));
+        }
+        host.remove();
+        return canvases;
+    },
+
+    _downloadDataUrl(dataUrl, filename) {
+        const a = document.createElement('a');
+        a.href = dataUrl; a.download = filename;
+        document.body.appendChild(a); a.click(); a.remove();
+    },
+
+    // 브라우저 인쇄 대화상자
+    step3Print() {
+        const gradeText = this.state.config.grade ? `${this.state.config.grade}학년 ` : '';
         const win = window.open('', '_blank', 'width=980,height=760');
         if (!win) { this.showAlert('팝업 차단됨', '브라우저가 새 창을 막았습니다.<br>이 사이트의 팝업을 허용한 뒤 다시 눌러주세요.'); return; }
         win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8">
             <title>${gradeText}${this.state.currentWeek}주차 반별 시간표</title>
-            <style>${css}</style></head><body>${pages}</body></html>`);
+            <style>@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&display=swap');
+            ${this._step3Css('print')}</style></head>
+            <body><div class="p3-root">${this._step3Pages().join('')}</div></body></html>`);
         win.document.close();
         win.focus();
-        // 웹폰트가 적용된 뒤 인쇄 대화상자를 띄운다 (대상에서 "PDF로 저장" 선택)
-        setTimeout(() => win.print(), 600);
+        setTimeout(() => win.print(), 700);
+    },
+
+    // PDF 파일로 바로 저장
+    async step3SavePdf() {
+        this.showToast('PDF를 만드는 중입니다…');
+        const canvases = await this._step3CapturePages();
+        if (!canvases) return;
+        const Ctor = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
+        if (!Ctor) { this.showAlert('오류', 'PDF 변환 기능을 불러오지 못했습니다.<br>새로고침 후 다시 시도해주세요.'); return; }
+        const pdf = new Ctor({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+        canvases.forEach((cv, i) => {
+            if (i) pdf.addPage();
+            pdf.addImage(cv.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, 210, 297);
+        });
+        pdf.save(this._step3FileName('pdf'));
+        this.showToast('✅ PDF로 저장했습니다.');
+    },
+
+    // 이미지(PNG)로 저장
+    async step3SaveImage() {
+        this.showToast('이미지를 만드는 중입니다…');
+        const canvases = await this._step3CapturePages();
+        if (!canvases) return;
+        canvases.forEach((cv, i) => {
+            const name = canvases.length > 1
+                ? this._step3FileName('png').replace('.png', `_${i + 1}.png`)
+                : this._step3FileName('png');
+            this._downloadDataUrl(cv.toDataURL('image/png'), name);
+        });
+        this.showToast('✅ 이미지로 저장했습니다.');
     },
 
     // 이 과목이 반별로 몇 차시씩 들어가 있는지 (반마다 다르면 uniform=false)
