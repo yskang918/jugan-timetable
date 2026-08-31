@@ -140,6 +140,12 @@ const App = {
         }) || null;
     },
 
+    // 과목 이름으로 전담 보드 찾기 (색상 표시용 — 자리가 아니라 과목 이름을 기준으로 함)
+    _spByName(name, week) {
+        const w = (week !== undefined && week !== null) ? week : this.state.currentWeek;
+        return this._sp(week).find(sp => (sp.subject || sp.name) === name && !(sp.hiddenWeeks || []).includes(w)) || null;
+    },
+
     initWeekData(week) {
         if (!this.state.history[week]) {
             const targets = {};
@@ -1608,7 +1614,6 @@ const App = {
             const cStr = String(c);
             if (!wData.classes[cStr]) wData.classes[cStr] = { "월": [], "화": [], "수": [], "목": [], "금": [] };
             const data = wData.classes[cStr];
-            const spCells = wData.specialistCells || {};
 
             h += `<div class="ts-class-card"><div class="ts-class-title">${c}반</div><div class="ts-grid">`;
             h += `<div></div>${this.days.map(d => `<div class="ts-head">${d}</div>`).join('')}`;
@@ -1618,8 +1623,8 @@ const App = {
                     if (p >= this.state.config.periods[d]) { h += `<div class="ts-tile ts-tile-none"></div>`; return; }
                     const val = data[d][p] || '';
                     const isSel = !!(sel && sel.cls === cStr && sel.day === d && sel.p === p);
-                    const isSpLocked = !!(spCells[cStr]?.[d]?.[p]);
-                    const sp = isSpLocked ? this._spForCell(c, d, p) : null;
+                    // 색은 "지금 이 칸에 있는 과목 이름"을 기준으로 정함 (스왑해도 색이 자리가 아니라 과목을 따라가게)
+                    const sp = val ? this._spByName(val) : null;
                     const bg = (!isSel && sp && sp.bg) ? ` style="background-color:${sp.bg};"` : '';
                     const cls = `ts-tile${!val ? ' ts-tile-empty' : ''}${isSel ? ' ts-tile-selected' : ''}`;
 
