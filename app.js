@@ -449,11 +449,24 @@ const App = {
                 this.tileClick(tile.dataset.cls, tile.dataset.day, parseInt(tile.dataset.idx));
             });
             tsBody.addEventListener('keydown', (e) => {
-                if (e.target.classList.contains('ts-tile-input') && e.key === 'Enter') e.target.blur();
-            });
-            tsBody.addEventListener('blur', (e) => {
-                if (e.target.classList.contains('ts-tile-input')) {
+                if (e.target.classList.contains('ts-tile-input') && e.key === 'Enter') {
                     this.tileInputCommit(e.target.dataset.cls, e.target.dataset.day, parseInt(e.target.dataset.idx), e.target.value);
+                }
+            });
+            // blur 이벤트에는 의존하지 않는다 — 화면을 다시 그리면서 포커스된 입력칸이 사라지면
+            // 브라우저가 blur를 동기(또는 그 직후) 발생시키는데, 그걸 커밋 처리로 이어받으면
+            // 방금 계산한 스왑 결과를 재진입으로 덮어써버린다(체(강) 두 칸 복제 버그의 원인이었음).
+            // 대신 tsBody 바깥을 mousedown할 때만 "지금 열려있는 입력칸"을 직접 찾아 커밋한다.
+            // capture 단계(=버블링으로 target까지 내려가기 전)에서 판정해야 한다.
+            // tsBody 자체의 mousedown 처리(버블 단계)가 먼저 실행되면 재렌더링으로 클릭 대상이
+            // DOM에서 이미 떨어져나간 뒤라 tsBody.contains(e.target)가 항상 false로 나와
+            // "바깥 클릭"으로 잘못 판정되고, 방금 한 선택이 즉시 취소돼버린다.
+            document.addEventListener('mousedown', (e) => {
+                if (document.getElementById('tile-step-overlay')?.classList.contains('hide')) return;
+                if (tsBody.contains(e.target)) return;
+                const openInput = tsBody.querySelector('.ts-tile-input');
+                if (openInput) {
+                    this.tileInputCommit(openInput.dataset.cls, openInput.dataset.day, parseInt(openInput.dataset.idx), openInput.value);
                 }
             }, true);
         }
