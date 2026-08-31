@@ -473,41 +473,101 @@ td.duplicate-error { background-color: #fee2e2 !important; border: 2px solid #ef
 }
 #settings-overlay.hide { display: none !important; }
 .ts-body-plain { flex: 1; overflow-y: auto; padding: 24px; }
+
+/* --- 2단계: 과목별 이번 주 차시 --- */
+#step2-overlay {
+    position: fixed; inset: 0; z-index: 9998;
+    display: flex; flex-direction: column;
+    background: #f1f5f9;
+}
+#step2-overlay.hide { display: none !important; }
+.s2-wrap { max-width: 560px; margin: 0 auto; }
+.s2-card {
+    background: #fff; border-radius: 16px; box-shadow: var(--shadow-md);
+    padding: 20px 24px;
+}
+.s2-table { width: 100%; border-collapse: collapse; }
+.s2-table th {
+    text-align: left; font-size: 0.82rem; font-weight: 700; color: var(--text-sub);
+    padding: 8px 6px; border-bottom: 2px solid var(--border-color);
+}
+.s2-table th:last-child, .s2-table .s2-val { text-align: right; }
+.s2-table td { padding: 7px 6px; border-bottom: 1px solid #f1f5f9; }
+.s2-sub { font-size: 0.95rem; font-weight: 700; color: var(--text-main); }
+.s2-badge {
+    font-size: 0.66rem; font-weight: 800; color: #4f46e5;
+    background: #ede9fe; border-radius: 20px; padding: 2px 8px; margin-left: 4px;
+    vertical-align: middle;
+}
+.s2-auto {
+    display: inline-block; min-width: 54px; text-align: center;
+    font-size: 0.95rem; font-weight: 800; color: #4f46e5;
+    background: #ede9fe; border: 1.5px solid #ddd6fe; border-radius: 8px; padding: 5px 10px;
+}
+.s2-auto-warn { color: #a16207; background: #fef9c3; border-color: #fde68a; }
+.s2-warn {
+    font-size: 0.66rem; font-weight: 800; color: #a16207;
+    background: #fef9c3; border-radius: 20px; padding: 2px 8px; margin-left: 4px;
+    vertical-align: middle;
+}
+.s2-input {
+    width: 72px; text-align: center; font-size: 0.95rem; font-weight: 700;
+    color: var(--text-main); padding: 5px 8px;
+    border: 1.5px solid var(--border-color); border-radius: 8px; outline: none;
+}
+.s2-input:focus { border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(22,163,74,0.12); }
+.s2-table tfoot td {
+    padding-top: 12px; border-bottom: none; border-top: 2px solid var(--border-color);
+    font-size: 1rem;
+}
+.s2-summary {
+    margin-top: 14px; padding: 10px 14px; border-radius: 10px;
+    font-size: 0.88rem; font-weight: 700; text-align: center;
+}
+.s2-ok    { background: #dcfce7; color: #15803d; }
+.s2-over  { background: #fee2e2; color: #b91c1c; }
+.s2-under { background: #fef9c3; color: #a16207; }
 .ts-body-plain .settings-page { max-width: 1600px; margin: 0 auto; padding-bottom: 40px; }
 
+/* 한 화면에 모든 반이 들어가도록: 세로로도 남는 높이를 행끼리 균등하게 나눠 갖고,
+   본문 자체는 스크롤하지 않는다(칸 높이가 화면에 맞춰 자동으로 줄어듦). */
 .ts-body {
-    flex: 1; overflow-y: auto; padding: 24px;
-    display: grid; gap: 20px;
+    flex: 1; min-height: 0; overflow: hidden; padding: 12px;
+    display: grid; gap: 10px;
     grid-template-columns: repeat(5, 1fr);
-    align-content: start;
+    grid-auto-rows: minmax(0, 1fr);
 }
 
 .ts-class-card {
-    background: #fff; border-radius: 16px; box-shadow: var(--shadow-md);
-    padding: 16px; display: flex; flex-direction: column; gap: 10px;
+    background: #fff; border-radius: 12px; box-shadow: var(--shadow-md);
+    padding: 8px 10px; display: flex; flex-direction: column; gap: 4px;
+    min-height: 0; overflow: hidden;
 }
 .ts-class-title {
-    font-size: 1.15rem; font-weight: 800; color: var(--text-main);
-    padding: 2px 6px 8px; border-bottom: 2px solid var(--text-main);
+    font-size: 0.95rem; font-weight: 800; color: var(--text-main);
+    padding: 0 4px 4px; border-bottom: 2px solid var(--text-main);
+    flex-shrink: 0;
 }
 .ts-grid {
+    flex: 1; min-height: 0;
     display: grid;
-    grid-template-columns: 44px repeat(5, 1fr);
-    gap: 6px;
+    grid-template-columns: 22px repeat(5, 1fr);
+    grid-auto-rows: minmax(0, 1fr);
+    gap: 3px;
 }
 .ts-grid .ts-head {
-    text-align: center; font-size: 0.8rem; font-weight: 700; color: var(--text-sub);
-    padding: 4px 0;
+    text-align: center; font-size: 0.72rem; font-weight: 700; color: var(--text-sub);
+    display: flex; align-items: center; justify-content: center;
 }
 .ts-grid .ts-period-label {
     display: flex; align-items: center; justify-content: center;
-    font-size: 0.8rem; font-weight: 700; color: var(--text-sub);
+    font-size: 0.7rem; font-weight: 700; color: var(--text-sub);
 }
 
 .ts-tile {
     position: relative;
-    min-height: 56px;
-    border-radius: 14px;
+    min-height: 0;
+    border-radius: 8px;
     background: #f8fafc;
     border: 1.5px solid var(--border-color);
     display: flex; align-items: center; justify-content: center;
@@ -520,14 +580,14 @@ td.duplicate-error { background-color: #fee2e2 !important; border: 2px solid #ef
 .ts-tile-none { visibility: hidden; cursor: default; }
 
 .ts-tile-label {
-    font-size: 0.92rem; font-weight: 700; color: var(--text-main);
-    text-align: center; word-break: keep-all; line-height: 1.2;
+    font-size: clamp(0.6rem, 0.85vw, 0.85rem); font-weight: 700; color: var(--text-main);
+    text-align: center; word-break: keep-all; line-height: 1.1;
     pointer-events: none;
 }
 
 .ts-tile-input {
     width: 100%; height: 100%; border: none; background: transparent;
-    text-align: center; font-size: 0.92rem; font-weight: 700; color: var(--text-main);
+    text-align: center; font-size: clamp(0.6rem, 0.85vw, 0.85rem); font-weight: 700; color: var(--text-main);
     outline: none; padding: 0;
 }
 
@@ -548,17 +608,18 @@ td.duplicate-error { background-color: #fee2e2 !important; border: 2px solid #ef
 }
 
 .ts-tile-x {
-    position: absolute; top: -8px; right: -8px;
-    width: 20px; height: 20px; border-radius: 50%;
+    position: absolute; top: -6px; right: -6px;
+    width: 16px; height: 16px; border-radius: 50%;
     background: #ef4444; color: #fff; border: 2px solid #fff;
-    font-size: 0.7rem; font-weight: 900; line-height: 1;
+    font-size: 0.58rem; font-weight: 900; line-height: 1;
     display: flex; align-items: center; justify-content: center;
     cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.3);
     animation: none;
 }
 
+/* 화면이 좁아지면 열을 줄이되, 그만큼 세로가 길어지므로 이때는 스크롤을 허용 */
 @media (max-width: 1400px) {
-    .ts-body { grid-template-columns: repeat(3, 1fr); }
+    .ts-body { grid-template-columns: repeat(3, 1fr); overflow-y: auto; grid-auto-rows: minmax(200px, auto); }
 }
 @media (max-width: 900px) {
     .ts-body { grid-template-columns: repeat(2, 1fr); }

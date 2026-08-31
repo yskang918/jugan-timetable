@@ -1631,16 +1631,151 @@ const App = {
         const back = this._settingsReturn || { type: 'step', step: 1 };
         if (back.type === 'menu') {
             this.switchMenu(back.menuId);
-        } else if (back.step === 1) {
-            this.openTileStep();
+        } else if (back.step === 2) {
+            this.openStep2();
         } else {
-            // 2·3단계가 만들어지면 여기에서 해당 단계를 열어준다. 그전까지는 1단계로.
             this.openTileStep();
         }
     },
-    // 2단계는 아직 없음 — 자리만 만들어둠
+
+    /* --- 2단계: 과목별 이번 주 차시 --- */
     tileStepNext() {
-        this.showToast('다음 단계는 아직 준비 중입니다. 곧 이어서 만들어질 예정이에요.');
+        document.getElementById('tile-step-overlay').classList.add('hide');
+        this.openStep2();
+    },
+    openStep2() {
+        document.getElementById('tile-step-overlay').classList.add('hide');
+        document.getElementById('settings-overlay').classList.add('hide');
+        document.getElementById('step2-overlay').classList.remove('hide');
+        // 1단계에서 전담 배정을 고쳤을 수 있으므로 들어올 때마다 다시 계산
+        this._syncSpecialistTargets(this.state.currentWeek);
+        this.renderStep2();
+    },
+    step2Back() {
+        document.getElementById('step2-overlay').classList.add('hide');
+        this.openTileStep();
+    },
+    step2Next() {
+        this.showToast('3단계는 아직 준비 중입니다.');
+    },
+
+    // 이 과목이 반별로 몇 차시씩 들어가 있는지 (반마다 다르면 uniform=false)
+    _classCountsForSubject(week, sub) {
+        const wData = this.state.history[week];
+        const counts = [];
+        for (let c = 1; c <= this.state.config.classCount; c++) {
+            const cd = (wData.classes || {})[String(c)] || {};
+            let n = 0;
+            this.days.forEach(d => (cd[d] || []).forEach(v => { if (v === sub) n++; }));
+            counts.push(n);
+        }
+        const min = Math.min(...counts), max = Math.max(...counts);
+        return { min, max, uniform: min === max, counts };
+    },
+
+    // 2단계에 보여줄 과목 목록.
+    // 운영 과목 + 전담 보드에만 있는 과목(예: 과(실))까지 합쳐서, 설정의 정렬 규칙대로 정렬한다.
+    _step2Subjects() {
+        const names = (this.state.config.subjects || []).map(s => s.name).filter(Boolean);
+        const seen = new Set(names);
+        this._sp().forEach(sp => {
+            if ((sp.hiddenWeeks || []).includes(this.state.currentWeek)) return;
+            const n = sp.subject || sp.name;
+            if (n && !seen.has(n)) { seen.add(n); names.push(n); }
+        });
+        return names.sort((a, b) => {
+            const ka = this._subjectSortKey(a), kb = this._subjectSortKey(b);
+            if (ka.group !== kb.group) return ka.group - kb.group;
+            if (ka.isBase !== kb.isBase) return ka.isBase - kb.isBase;
+            return a.localeCompare(b, 'ko');
+        }).map(name => ({ name }));
+    },
+
+    // 전담 과목의 차시는 1단계 시간표에서 실제로 센 값(자동), 나머지는 직접 입력한 값
+    renderStep2() {
+        const body = document.getElementById('step2-body');
+        if (!body) return;
+        const week = this.state.currentWeek;
+        this.initWeekData(week);
+        const wData = this.state.history[week];
+        const subjects = this._step2Subjects();
+
+        const totalPeriods = Object.values(this.state.config.periods).reduce((a, b) => a + b, 0);
+        let sum = 0;
+        let rows = '';
+        subjects.forEach(s => {
+            const sub = s.name;
+            const auto = this._isSpecialistManagedSubject(sub);
+            if (!auto) {
+                const val = wData.targets[sub] || 0;
+                sum += val;
+                rows += `<tr>
+                    <td class="s2-sub">${sub}</td>
+                    <td class="s2-val"><input type="number" min="0" class="s2-input" value="${val}" data-sub="${sub}"></td>
+                </tr>`;
+                return;
+            }
+            // 전담 과목: 1단계 시간표에서 실제로 센 값
+            const cc = this._classCountsForSubject(week, sub);
+            wData.targets[sub] = cc.max;
+            sum += cc.max;
+            const shown = cc.uniform ? `${cc.max}` : `${cc.min}~${cc.max}`;
+            rows += `<tr>
+                <td class="s2-sub">${sub} <span class="s2-badge">전담</span>${
+                    cc.uniform ? '' : ' <span class="s2-warn" title="반마다 차시가 다릅니다. 1단계에서 확인하세요.">반별 다름</span>'}</td>
+                <td class="s2-val"><span class="s2-auto${cc.uniform ? '' : ' s2-auto-warn'}">${shown}</span></td>
+            </tr>`;
+        });
+
+        const diff = sum - totalPeriods;
+        const diffCls = diff === 0 ? 's2-ok' : (diff > 0 ? 's2-over' : 's2-under');
+        const diffTxt = diff === 0 ? '딱 맞습니다' : (diff > 0 ? `${diff}차시 초과` : `${-diff}차시 부족`);
+
+        body.innerHTML = `
+            <div class="s2-wrap">
+                <div class="s2-card">
+                    <table class="s2-table">
+                        <thead><tr><th>과목</th><th>이번 주 차시</th></tr></thead>
+                        <tbody>${rows}</tbody>
+                        <tfoot>
+                            <tr>
+                                <td class="s2-sub">합계</td>
+                                <td class="s2-val"><b>${sum}</b> / ${totalPeriods}</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                    <div class="s2-summary ${diffCls}">주당 총 수업 ${totalPeriods}차시 · ${diffTxt}</div>
+                </div>
+            </div>`;
+
+        body.querySelectorAll('.s2-input').forEach(inp => {
+            inp.addEventListener('input', (e) => {
+                const n = parseInt(e.target.value);
+                wData.targets[e.target.dataset.sub] = Number.isInteger(n) && n >= 0 ? n : 0;
+                this.state.isDirty = true;
+                this.saveData();
+                this._step2RefreshSum();
+            });
+        });
+    },
+
+    // 입력 중에 포커스가 날아가지 않도록 합계 줄만 갱신
+    _step2RefreshSum() {
+        const week = this.state.currentWeek;
+        const wData = this.state.history[week];
+        const subjects = this._step2Subjects();
+        const totalPeriods = Object.values(this.state.config.periods).reduce((a, b) => a + b, 0);
+        const sum = subjects.reduce((a, s) => a + (wData.targets[s.name] || 0), 0);
+        const body = document.getElementById('step2-body');
+        const sumCell = body?.querySelector('tfoot .s2-val');
+        if (sumCell) sumCell.innerHTML = `<b>${sum}</b> / ${totalPeriods}`;
+        const box = body?.querySelector('.s2-summary');
+        if (box) {
+            const diff = sum - totalPeriods;
+            box.className = 's2-summary ' + (diff === 0 ? 's2-ok' : (diff > 0 ? 's2-over' : 's2-under'));
+            box.textContent = `주당 총 수업 ${totalPeriods}차시 · ` +
+                (diff === 0 ? '딱 맞습니다' : (diff > 0 ? `${diff}차시 초과` : `${-diff}차시 부족`));
+        }
     },
 
     renderTileStep() {
@@ -1738,6 +1873,7 @@ const App = {
         if (wData.specialistCells?.[cStr]?.[d]) delete wData.specialistCells[cStr][d][p];
         this.state.tileSel = null;
         this.state.isDirty = true;
+        this._syncSpecialistTargets(this.state.currentWeek); // 2단계 차시에 즉시 반영
         this.saveData();
         this.renderTileStep();
     },
@@ -1758,6 +1894,7 @@ const App = {
         }
         this.state.tileSel = null;
         this.state.isDirty = true;
+        this._syncSpecialistTargets(this.state.currentWeek); // 2단계 차시에 즉시 반영
         this.saveData();
         this.renderTileStep();
     },
@@ -1989,11 +2126,6 @@ const App = {
                 </div>
                 <div style="display:flex;align-items:center;gap:10px;padding:4px 10px;background:${isHidden ? '#ede9fe' : '#f8fafc'};border-bottom:1px solid #e5e7eb;flex-wrap:wrap;">
                     <button onclick="App.toggleSpHide(${idx})" style="padding:3px 12px;border-radius:6px;font-size:0.76rem;font-weight:700;border:1.5px solid ${isHidden ? '#6366f1' : '#cbd5e1'};background:${isHidden ? '#ddd6fe' : '#f1f5f9'};color:${isHidden ? '#4f46e5' : '#64748b'};cursor:pointer;">${isHidden ? '✓ 이번 주 숨김 (클릭 시 해제)' : '이번 주 숨기기'}</button>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:0.76rem;color:#64748b;font-weight:600;" title="한 반에 후보 칸을 여러 개 등록해둔 경우(예: 과학실처럼 겹치지 않게 돌아가며 쓰는 자원), 반마다 실제로 채울 횟수를 제한합니다. 비워두면 후보 칸을 전부 채웁니다.">
-                        주당 실제 사용
-                        <input type="number" min="0" class="login-input" style="width:56px; padding:3px 6px; font-size:0.8rem;" value="${sp.weeklyCount != null ? sp.weeklyCount : ''}" placeholder="전체" oninput="App.updateSpWeeklyCount(${idx}, this.value)">
-                        회
-                    </label>
                 </div>
                 <table class="excel-table sp-table"><thead><tr><th>교시</th>${this.days.map(d=>`<th>${d}</th>`).join('')}</tr></thead><tbody>`;
             const maxP = Math.max(...Object.values(this.state.config.periods));
@@ -2350,15 +2482,6 @@ const App = {
     },
     updateSpName(i, v) { if(!this._sp()[i]) return; this._sp()[i].subject = v; this.saveData(); this._markSpDirty(); this.renderSpecialistSummary(); if(this.state.spPreviewOpen) this.renderSpecialistPreview(); },
     updateSpDesc(i, v) { if(!this._sp()[i]) return; this._sp()[i].desc = v; this.saveData(); this._markSpDirty(); },
-    // v가 빈 문자열이면 "전체 채움"(기존 동작, weeklyCount 없음), 0 이상 숫자면 그 횟수로 제한(0도 유효한 값 — "이번 주엔 아예 안 씀")
-    updateSpWeeklyCount(i, v) {
-        if (!this._sp()[i]) return;
-        const trimmed = String(v).trim();
-        const n = parseInt(trimmed);
-        this._sp()[i].weeklyCount = (trimmed !== '' && Number.isInteger(n) && n >= 0) ? n : null;
-        this.saveData();
-        this._markSpDirty();
-    },
     updateSpData(i, d, p, v) {
         if(!this._sp()[i]) return;
         if(!this._sp()[i].data) this._sp()[i].data = {};
@@ -3178,44 +3301,17 @@ ${bodyRows.join('')}
                 this.days.forEach(d => { if (!wData.classes[cStr][d]) wData.classes[cStr][d] = []; });
             }
 
-            if (sp.weeklyCount == null) {
-                // 반마다 후보 칸을 전부 채움 (기본 동작 — 후보가 반별로 1개씩만 등록된 보드용)
-                for (let c = 1; c <= this.state.config.classCount; c++) {
-                    const cStr = String(c), classData = wData.classes[cStr];
-                    this.days.forEach(d => {
-                        if (!sp.data[d]) return;
-                        for (let p = 0; p < this.state.config.periods[d]; p++) {
-                            if (!sp.data[d][p]) continue;
-                            const classes = String(sp.data[d][p]).split(/[,\s]+/).map(v => v.trim()).filter(Boolean);
-                            if (classes.includes(cStr) && !classData[d][p]) mark(cStr, d, p, sub);
-                        }
-                    });
-                }
-            } else {
-                // 반마다 "주당 실제 사용" 횟수만큼만 골라 채우고, 같은 시간에 다른 반과 겹치지 않게 함
-                // (과학실처럼 후보 칸이 여러 개 등록된 자원 — 실제로 쓰는 건 그중 일부뿐)
-                const usedSlots = new Set();
-                for (let c = 1; c <= this.state.config.classCount; c++) {
-                    const cStr = String(c), classData = wData.classes[cStr];
-                    const candidates = [];
-                    this.days.forEach(d => {
-                        if (!sp.data[d]) return;
-                        for (let p = 0; p < this.state.config.periods[d]; p++) {
-                            if (!sp.data[d][p]) continue;
-                            const classes = String(sp.data[d][p]).split(/[,\s]+/).map(v => v.trim()).filter(Boolean);
-                            if (classes.includes(cStr)) candidates.push([d, p]);
-                        }
-                    });
-                    let filled = 0;
-                    for (const [d, p] of candidates) {
-                        if (filled >= sp.weeklyCount) break;
-                        const key = `${d}-${p}`;
-                        if (usedSlots.has(key) || classData[d][p]) continue;
-                        mark(cStr, d, p, sub);
-                        usedSlots.add(key);
-                        filled++;
+            // 반마다 보드에 등록된 후보 칸을 전부 채운다.
+            for (let c = 1; c <= this.state.config.classCount; c++) {
+                const cStr = String(c), classData = wData.classes[cStr];
+                this.days.forEach(d => {
+                    if (!sp.data[d]) return;
+                    for (let p = 0; p < this.state.config.periods[d]; p++) {
+                        if (!sp.data[d][p]) continue;
+                        const classes = String(sp.data[d][p]).split(/[,\s]+/).map(v => v.trim()).filter(Boolean);
+                        if (classes.includes(cStr) && !classData[d][p]) mark(cStr, d, p, sub);
                     }
-                }
+                });
             }
         });
         wData.specialistAutofilled = true;

@@ -7,7 +7,7 @@
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#f8fafc">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=20260831e">
+    <link rel="stylesheet" href="style.css?v=20260831f">
 </head>
 <body>
     <div id="app">
@@ -349,6 +349,18 @@
         <div id="tile-step-body" class="ts-body"></div>
     </div>
 
+    <!-- 2단계: 과목별 이번 주 차시 -->
+    <div id="step2-overlay" class="hide">
+        <div class="ts-header">
+            <div class="ts-title">2단계 — 과목별 이번 주 차시</div>
+            <div class="ts-header-sub">전담 과목은 1단계 배정에 따라 <b>자동 계산</b>됩니다. 나머지 과목만 직접 입력하세요.</div>
+            <button class="ts-old-view-btn" onclick="App.step2Back()">← 1단계</button>
+            <button class="ts-old-view-btn" onclick="App.openSettings({type:'step',step:2})" title="설정으로">⚙️ 설정</button>
+            <button class="ts-next-btn" onclick="App.step2Next()">다음 단계 →</button>
+        </div>
+        <div id="step2-body" class="ts-body-plain"></div>
+    </div>
+
     <!-- 주간학습안내 미리보기 오버레이 -->
     <div id="print-preview-overlay" class="hide">
         <div class="ppo-header">
@@ -378,13 +390,13 @@
     <!-- Firebase SDK (서버 모드에서 사용) -->
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-    <script src="firebase-init.js?v=20260831e"></script>
+    <script src="firebase-init.js?v=20260831f"></script>
     <!-- 데이터 레이어 & 모드 설정 (app.js보다 먼저 로드) -->
-    <script src="db.js?v=20260831e"></script>
-    <script src="mode.js?v=20260831e"></script>
+    <script src="db.js?v=20260831f"></script>
+    <script src="mode.js?v=20260831f"></script>
     <!-- 앱 메인 (원본 그대로 사용) -->
     <!-- ?v= 값은 배포할 때마다 바꿔야 함 — GitHub Pages 캐시 때문에 안 바꾸면 새로고침해도 옛날 버전이 뜸 -->
-    <script src="app.js?v=20260831e"></script>
+    <script src="app.js?v=20260831f"></script>
     <!-- 모드별 UI 반영은 mode.js의 window.load 핸들러에서 처리 -->
 </body>
 </html>
