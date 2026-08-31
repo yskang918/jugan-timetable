@@ -602,7 +602,6 @@ td.duplicate-error { background-color: #fee2e2 !important; border: 2px solid #ef
 }
 .lib-bar { height: 6px; border-radius: 20px; background: #e2e8f0; overflow: hidden; }
 .lib-bar span { display: block; height: 100%; background: var(--primary-color); border-radius: 20px; }
-.lib-meta { font-size: 0.76rem; font-weight: 600; color: var(--text-sub); }
 
 .lib-actions { display: flex; gap: 6px; margin-top: 2px; }
 .lib-mini {

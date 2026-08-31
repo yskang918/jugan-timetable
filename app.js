@@ -2330,7 +2330,6 @@ const App = {
                 </div>
                 <div class="lib-name">${this._weekName(w)}</div>
                 <div class="lib-bar"><span style="width:${s.pct}%"></span></div>
-                <div class="lib-meta">${s.filled} / ${s.total}칸 · ${s.pct}%</div>
                 <div class="lib-actions">
                     <button class="lib-mini" onclick="event.stopPropagation(); App.libRenameWeek(${w})">이름 변경</button>
                     <button class="lib-mini lib-mini-del" onclick="event.stopPropagation(); App.libDeleteWeek(${w})">삭제</button>
