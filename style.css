@@ -452,6 +452,18 @@ td.duplicate-error { background-color: #fee2e2 !important; border: 2px solid #ef
     width: 16px; height: 16px; border-radius: 50%;
     background: #ef4444; color: #fff; font-size: 0.6rem; font-weight: 900; vertical-align: middle;
 }
+.ts-old-view-btn {
+    padding: 8px 14px; border-radius: 10px; border: 1.5px solid #475569;
+    background: transparent; color: #cbd5e1; font-size: 0.82rem; font-weight: 700;
+    cursor: pointer; white-space: nowrap; transition: var(--transition);
+}
+.ts-old-view-btn:hover { background: #334155; }
+.ts-next-btn {
+    padding: 8px 18px; border-radius: 10px; border: none;
+    background: var(--primary-color); color: #fff; font-size: 0.88rem; font-weight: 800;
+    cursor: pointer; white-space: nowrap; transition: var(--transition);
+}
+.ts-next-btn:hover { background: var(--primary-dark); }
 
 .ts-body {
     flex: 1; overflow-y: auto; padding: 24px;

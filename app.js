@@ -1591,6 +1591,10 @@ const App = {
         // 반영된 변경사항을 일반 화면에도 즉시 보이게
         this.renderTimetableLayout();
     },
+    // 2단계는 아직 없음 — 자리만 만들어둠
+    tileStepNext() {
+        this.showToast('다음 단계는 아직 준비 중입니다. 곧 이어서 만들어질 예정이에요.');
+    },
 
     renderTileStep() {
         const body = document.getElementById('tile-step-body');

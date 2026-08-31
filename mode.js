@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (this.dom.userBadge) this.dom.userBadge.classList.add('hide');
             this._setServerBtns(true);
             this.updateNavForRole();
-            if (fromInit) this.loadFromServer();
+            if (fromInit) this.loadFromServer().then(() => this.openTileStep());
         };
     } catch (e) {}
 });
