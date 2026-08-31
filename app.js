@@ -2382,7 +2382,7 @@ const App = {
             cards += `<div class="lib-card${isNow ? ' lib-card-now' : ''}" onclick="App.libOpenWeek(${w})" title="${this._weekName(w)} 이어서 편집">
                 <div class="lib-card-top">
                     <span class="lib-num">${w}</span>
-                    <span class="lib-state ${done ? 'lib-done' : 'lib-todo'}">${done ? '완성' : `${s.empty}칸 남음`}</span>
+                    ${done ? '<span class="lib-state lib-done">완성</span>' : ''}
                 </div>
                 <div class="lib-name">${this._weekName(w)}</div>
                 <div class="lib-bar"><span style="width:${s.pct}%"></span></div>
@@ -2401,7 +2401,7 @@ const App = {
         body.innerHTML = `<div class="lib-wrap">
             <div class="lib-head">
                 <div>
-                    <div class="lib-h1">주차 시간표</div>
+                    <div class="lib-h1">시간표 저장소</div>
                     <div class="lib-h2">전체 ${this.state.maxWeek}개 · 카드를 누르면 1단계부터 이어서 편집합니다.</div>
                 </div>
             </div>

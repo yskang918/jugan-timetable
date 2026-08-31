@@ -610,7 +610,6 @@ main.container { display: none !important; }
 }
 .lib-state { font-size: 0.68rem; font-weight: 800; border-radius: 20px; padding: 3px 9px; }
 .lib-done { color: #15803d; background: #dcfce7; }
-.lib-todo { color: #a16207; background: #fef9c3; }
 
 .lib-name {
     font-size: 1.06rem; font-weight: 800; color: var(--text-main);
