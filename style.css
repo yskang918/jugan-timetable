@@ -481,52 +481,69 @@ td.duplicate-error { background-color: #fee2e2 !important; border: 2px solid #ef
     background: #f1f5f9;
 }
 #step2-overlay.hide { display: none !important; }
-.s2-wrap { max-width: 560px; margin: 0 auto; }
-.s2-card {
-    background: #fff; border-radius: 16px; box-shadow: var(--shadow-md);
-    padding: 20px 24px;
+/* 2단계 본문은 스크롤하지 않고 한 화면에 담는다 */
+.s2-body { overflow: hidden; min-height: 0; padding: 14px 18px; }
+.s2-wrap {
+    height: 100%;
+    display: flex; flex-direction: column; gap: 12px;
 }
-.s2-table { width: 100%; border-collapse: collapse; }
-.s2-table th {
-    text-align: left; font-size: 0.82rem; font-weight: 700; color: var(--text-sub);
-    padding: 8px 6px; border-bottom: 2px solid var(--border-color);
+/* 모든 과목이 한 화면에 들어오도록 가로로도 흐르게 배치 */
+.s2-grid {
+    flex: 1; min-height: 0; overflow: hidden;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    grid-auto-rows: minmax(0, max-content);
+    gap: 10px;
+    align-content: start;
 }
-.s2-table th:last-child, .s2-table .s2-val { text-align: right; }
-.s2-table td { padding: 7px 6px; border-bottom: 1px solid #f1f5f9; }
-.s2-sub { font-size: 0.95rem; font-weight: 700; color: var(--text-main); }
+.s2-item {
+    background: #fff; border-radius: 12px; box-shadow: var(--shadow-md);
+    padding: 10px 12px; display: flex; flex-direction: column; gap: 6px;
+}
+.s2-item-fixed { background: #faf9ff; }
+.s2-item-head { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.s2-item-body { display: flex; align-items: center; gap: 10px; }
+.s2-sub { font-size: 0.95rem; font-weight: 800; color: var(--text-main); }
 .s2-badge {
-    font-size: 0.66rem; font-weight: 800; color: #4f46e5;
-    background: #ede9fe; border-radius: 20px; padding: 2px 8px; margin-left: 4px;
-    vertical-align: middle;
+    font-size: 0.64rem; font-weight: 800; color: #4f46e5;
+    background: #ede9fe; border-radius: 20px; padding: 2px 8px;
 }
 .s2-auto {
-    display: inline-block; min-width: 54px; text-align: center;
+    display: inline-block; min-width: 56px; text-align: center;
     font-size: 0.95rem; font-weight: 800; color: #4f46e5;
     background: #ede9fe; border: 1.5px solid #ddd6fe; border-radius: 8px; padding: 5px 10px;
 }
-.s2-auto-warn { color: #a16207; background: #fef9c3; border-color: #fde68a; }
-.s2-warn {
-    font-size: 0.66rem; font-weight: 800; color: #a16207;
-    background: #fef9c3; border-radius: 20px; padding: 2px 8px; margin-left: 4px;
-    vertical-align: middle;
-}
 .s2-input {
-    width: 72px; text-align: center; font-size: 0.95rem; font-weight: 700;
+    width: 64px; text-align: center; font-size: 0.95rem; font-weight: 700;
     color: var(--text-main); padding: 5px 8px;
     border: 1.5px solid var(--border-color); border-radius: 8px; outline: none;
 }
 .s2-input:focus { border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(22,163,74,0.12); }
-.s2-table tfoot td {
-    padding-top: 12px; border-bottom: none; border-top: 2px solid var(--border-color);
-    font-size: 1rem;
+
+/* 연차시 토글 */
+.s2-toggle { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; user-select: none; }
+.s2-toggle input { position: absolute; opacity: 0; width: 0; height: 0; }
+.s2-track {
+    width: 32px; height: 18px; border-radius: 20px; background: #cbd5e1;
+    position: relative; transition: background 0.15s ease; flex-shrink: 0;
 }
+.s2-knob {
+    position: absolute; top: 2px; left: 2px;
+    width: 14px; height: 14px; border-radius: 50%; background: #fff;
+    transition: transform 0.15s ease; box-shadow: 0 1px 2px rgba(0,0,0,0.25);
+}
+.s2-toggle.on .s2-track { background: var(--primary-color); }
+.s2-toggle.on .s2-knob { transform: translateX(14px); }
+.s2-toggle-label { font-size: 0.72rem; font-weight: 700; color: var(--text-sub); white-space: nowrap; }
+.s2-toggle.on .s2-toggle-label { color: var(--primary-color); }
+.s2-toggle input:focus-visible + .s2-track { box-shadow: 0 0 0 3px rgba(22,163,74,0.25); }
+
 .s2-summary {
-    margin-top: 14px; padding: 10px 14px; border-radius: 10px;
-    font-size: 0.88rem; font-weight: 700; text-align: center;
+    flex-shrink: 0;
+    padding: 10px 14px; border-radius: 10px; background: #e2e8f0; color: #334155;
+    font-size: 0.9rem; font-weight: 700; text-align: center;
 }
-.s2-ok    { background: #dcfce7; color: #15803d; }
-.s2-over  { background: #fee2e2; color: #b91c1c; }
-.s2-under { background: #fef9c3; color: #a16207; }
+.s2-summary b { font-size: 1.15rem; color: var(--text-main); }
 .ts-body-plain .settings-page { max-width: 1600px; margin: 0 auto; padding-bottom: 40px; }
 
 /* 한 화면에 모든 반이 들어가도록: 세로로도 남는 높이를 행끼리 균등하게 나눠 갖고,

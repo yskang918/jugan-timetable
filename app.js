@@ -1700,52 +1700,52 @@ const App = {
         const wData = this.state.history[week];
         const subjects = this._step2Subjects();
 
-        const totalPeriods = Object.values(this.state.config.periods).reduce((a, b) => a + b, 0);
         let sum = 0;
-        let rows = '';
+        let cards = '';
         subjects.forEach(s => {
             const sub = s.name;
-            const auto = this._isSpecialistManagedSubject(sub);
-            if (!auto) {
-                const val = wData.targets[sub] || 0;
-                sum += val;
-                rows += `<tr>
-                    <td class="s2-sub">${sub}</td>
-                    <td class="s2-val"><input type="number" min="0" class="s2-input" value="${val}" data-sub="${sub}"></td>
-                </tr>`;
+            const fixed = this._isSpecialistManagedSubject(sub);
+
+            if (fixed) {
+                // 1단계에서 고정된 과목 — 실제 배정된 차시를 그대로 보여줌(수정 불가)
+                const cc = this._classCountsForSubject(week, sub);
+                wData.targets[sub] = cc.max;
+                sum += cc.max;
+                cards += `<div class="s2-item s2-item-fixed">
+                    <div class="s2-item-head">
+                        <span class="s2-sub">${sub}</span>
+                        <span class="s2-badge">1단계 고정</span>
+                    </div>
+                    <div class="s2-item-body">
+                        <span class="s2-auto">${cc.max}</span>
+                    </div>
+                </div>`;
                 return;
             }
-            // 전담 과목: 1단계 시간표에서 실제로 센 값
-            const cc = this._classCountsForSubject(week, sub);
-            wData.targets[sub] = cc.max;
-            sum += cc.max;
-            const shown = cc.uniform ? `${cc.max}` : `${cc.min}~${cc.max}`;
-            rows += `<tr>
-                <td class="s2-sub">${sub} <span class="s2-badge">전담</span>${
-                    cc.uniform ? '' : ' <span class="s2-warn" title="반마다 차시가 다릅니다. 1단계에서 확인하세요.">반별 다름</span>'}</td>
-                <td class="s2-val"><span class="s2-auto${cc.uniform ? '' : ' s2-auto-warn'}">${shown}</span></td>
-            </tr>`;
-        });
 
-        const diff = sum - totalPeriods;
-        const diffCls = diff === 0 ? 's2-ok' : (diff > 0 ? 's2-over' : 's2-under');
-        const diffTxt = diff === 0 ? '딱 맞습니다' : (diff > 0 ? `${diff}차시 초과` : `${-diff}차시 부족`);
+            const val = wData.targets[sub] || 0;
+            sum += val;
+            const cfg = (this.state.config.subjects || []).find(x => x.name === sub);
+            const isBlock = !!(cfg && cfg.blockSize > 1);
+            cards += `<div class="s2-item">
+                <div class="s2-item-head">
+                    <span class="s2-sub">${sub}</span>
+                </div>
+                <div class="s2-item-body">
+                    <input type="number" min="0" class="s2-input" value="${val}" data-sub="${sub}">
+                    <label class="s2-toggle${isBlock ? ' on' : ''}" title="켜면 랜덤 배정 시 2차시를 연달아 붙여서 배정합니다.">
+                        <input type="checkbox" data-block-sub="${sub}" ${isBlock ? 'checked' : ''}>
+                        <span class="s2-track"><span class="s2-knob"></span></span>
+                        <span class="s2-toggle-label">연차시</span>
+                    </label>
+                </div>
+            </div>`;
+        });
 
         body.innerHTML = `
             <div class="s2-wrap">
-                <div class="s2-card">
-                    <table class="s2-table">
-                        <thead><tr><th>과목</th><th>이번 주 차시</th></tr></thead>
-                        <tbody>${rows}</tbody>
-                        <tfoot>
-                            <tr>
-                                <td class="s2-sub">합계</td>
-                                <td class="s2-val"><b>${sum}</b> / ${totalPeriods}</td>
-                            </tr>
-                        </tfoot>
-                    </table>
-                    <div class="s2-summary ${diffCls}">주당 총 수업 ${totalPeriods}차시 · ${diffTxt}</div>
-                </div>
+                <div class="s2-grid">${cards}</div>
+                <div class="s2-summary">이번 주 합계 <b class="s2-total">${sum}</b>차시</div>
             </div>`;
 
         body.querySelectorAll('.s2-input').forEach(inp => {
@@ -1757,25 +1757,26 @@ const App = {
                 this._step2RefreshSum();
             });
         });
+
+        // 연차시 토글 — config.subjects의 blockSize를 바꿔 랜덤 배정에 그대로 반영됨
+        body.querySelectorAll('[data-block-sub]').forEach(chk => {
+            chk.addEventListener('change', (e) => {
+                const cfg = (this.state.config.subjects || []).find(x => x.name === e.target.dataset.blockSub);
+                if (!cfg) return;
+                cfg.blockSize = e.target.checked ? 2 : 1;
+                e.target.closest('.s2-toggle').classList.toggle('on', e.target.checked);
+                this.state.isDirty = true;
+                this.saveData();
+            });
+        });
     },
 
-    // 입력 중에 포커스가 날아가지 않도록 합계 줄만 갱신
+    // 입력 중에 포커스가 날아가지 않도록 합계 숫자만 갱신
     _step2RefreshSum() {
-        const week = this.state.currentWeek;
-        const wData = this.state.history[week];
-        const subjects = this._step2Subjects();
-        const totalPeriods = Object.values(this.state.config.periods).reduce((a, b) => a + b, 0);
-        const sum = subjects.reduce((a, s) => a + (wData.targets[s.name] || 0), 0);
-        const body = document.getElementById('step2-body');
-        const sumCell = body?.querySelector('tfoot .s2-val');
-        if (sumCell) sumCell.innerHTML = `<b>${sum}</b> / ${totalPeriods}`;
-        const box = body?.querySelector('.s2-summary');
-        if (box) {
-            const diff = sum - totalPeriods;
-            box.className = 's2-summary ' + (diff === 0 ? 's2-ok' : (diff > 0 ? 's2-over' : 's2-under'));
-            box.textContent = `주당 총 수업 ${totalPeriods}차시 · ` +
-                (diff === 0 ? '딱 맞습니다' : (diff > 0 ? `${diff}차시 초과` : `${-diff}차시 부족`));
-        }
+        const wData = this.state.history[this.state.currentWeek];
+        const sum = this._step2Subjects().reduce((a, s) => a + (wData.targets[s.name] || 0), 0);
+        const el = document.querySelector('#step2-body .s2-total');
+        if (el) el.textContent = sum;
     },
 
     renderTileStep() {
