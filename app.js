@@ -105,19 +105,24 @@ const App = {
     // 수정할 때마다 짧은 지연 후 전체 데이터를 자동 저장(빠른 연속 입력은 하나로 묶어서 저장)
     _scheduleAutosave() {
         if (!this.state.roomCode) return;
-        const indicator = document.getElementById('autosave-indicator');
-        if (indicator) indicator.textContent = '● 저장 대기 중...';
+        const setSave = (txt) => {
+            const ind = document.getElementById('autosave-indicator');
+            if (ind) ind.textContent = txt;
+            [1, 2, 3].forEach(n => {
+                const el = document.getElementById(`ts-save-${n}`);
+                if (el) el.textContent = txt;
+            });
+        };
+        setSave('● 저장 중...');
         clearTimeout(this._autosaveTimer);
         this._autosaveTimer = setTimeout(async () => {
             try {
                 await FirebaseDB.saveAdmin(this.state.roomCode, this.state);
-                if (indicator) {
-                    indicator.textContent = '✓ 자동 저장됨';
-                    clearTimeout(this._autosaveIndicatorTimer);
-                    this._autosaveIndicatorTimer = setTimeout(() => { indicator.textContent = ''; }, 2000);
-                }
+                setSave('✓ 저장됨');
+                clearTimeout(this._autosaveIndicatorTimer);
+                this._autosaveIndicatorTimer = setTimeout(() => setSave(''), 2500);
             } catch (e) {
-                if (indicator) indicator.textContent = '⚠ 자동 저장 실패';
+                setSave('⚠ 저장 실패');
             }
         }, 800);
     },
@@ -1617,6 +1622,7 @@ const App = {
         this.state.tileSel = null;
         document.getElementById('tile-step-overlay').classList.remove('hide');
         this.renderTileStep();
+        this._syncStepWeekBar();
     },
     // 설정을 어디서 열었는지 기억해뒀다가 '뒤로가기'로 그 화면에 그대로 돌려보낸다.
     // 지금은 1단계뿐이지만, 2·3단계가 생기면 여기에 항목만 추가하면 된다.
@@ -1656,6 +1662,7 @@ const App = {
         // 1단계에서 전담 배정을 고쳤을 수 있으므로 들어올 때마다 다시 계산
         this._syncSpecialistTargets(this.state.currentWeek);
         this.renderStep2();
+        this._syncStepWeekBar();
     },
     step2Back() {
         document.getElementById('step2-overlay').classList.add('hide');
@@ -1674,6 +1681,7 @@ const App = {
         document.getElementById('settings-overlay').classList.add('hide');
         document.getElementById('step3-overlay').classList.remove('hide');
         this.renderStep3();
+        this._syncStepWeekBar();
     },
     step3Back() {
         this.state.tileSel = null;
@@ -1811,21 +1819,29 @@ const App = {
         const css = `
             @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&display=swap');
             * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            html, body { height: 100%; }
             body { margin:0; font-family:'Noto Sans KR','Malgun Gothic',sans-serif; background:#fff; color:#111827; }
-            @page { size: A4 portrait; margin: 10mm 9mm; }
+            @page { size: A4 portrait; margin: 12mm 14mm; }
+            /* 페이지 높이를 꽉 채우고 줄마다 같은 높이를 나눠 가져,
+               반이 적어도 표가 납작해 보이지 않게 함 */
+            .p3-page { height: 273mm; display:flex; flex-direction:column; }
             .p3-break { page-break-before: always; }
-            .p3-title { text-align:center; font-size:15px; font-weight:800; letter-spacing:1px;
-                        padding-bottom:7px; margin-bottom:9px; border-bottom:2px solid #1e293b; }
-            .p3-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:7mm 6mm; }
-            .p3-card { page-break-inside:avoid; }
-            .p3-table { width:100%; border-collapse:collapse; table-layout:fixed; text-align:center; }
-            .p3-col-pd { width:26px; }
+            .p3-title { flex:0 0 auto; text-align:center; font-size:15px; font-weight:800; letter-spacing:1px;
+                        padding-bottom:8px; margin-bottom:10px; border-bottom:2px solid #1e293b; }
+            .p3-grid { flex:1; min-height:0; display:grid; grid-template-columns:repeat(2,1fr);
+                       grid-auto-rows:1fr; gap:8mm 10mm; }
+            /* 표가 지나치게 가로로 길어 보이지 않도록 폭을 제한하고 가운데 정렬 */
+            .p3-card { min-height:0; display:flex; justify-content:center; page-break-inside:avoid; }
+            .p3-table { width:100%; max-width:74mm; height:100%; border-collapse:collapse;
+                        table-layout:fixed; text-align:center; }
+            .p3-col-pd { width:24px; }
             .p3-table th, .p3-table td {
-                border:1px solid #cbd5e1; padding:4.5px 2px; font-size:10.5px; font-weight:600;
-                overflow:hidden; white-space:nowrap; text-overflow:ellipsis; letter-spacing:-0.5px; height:22px;
+                border:1px solid #cbd5e1; padding:3px 2px; font-size:10.5px; font-weight:600;
+                overflow:hidden; white-space:nowrap; text-overflow:ellipsis; letter-spacing:-0.5px;
             }
-            .p3-class { background:#1e293b; color:#fff; font-size:12.5px; font-weight:800; padding:6px 4px; letter-spacing:1px; }
-            .p3-day { background:#eef2f7; color:#334155; font-weight:800; font-size:10px; }
+            .p3-class { background:#1e293b; color:#fff; font-size:12.5px; font-weight:800;
+                        padding:5px 4px; letter-spacing:1px; height:1px; }
+            .p3-day { background:#eef2f7; color:#334155; font-weight:800; font-size:10px; height:1px; }
             .p3-pd { background:#f8fafc; color:#94a3b8; font-weight:800; font-size:9.5px; }
             .p3-off { background:#e5e7eb; }
         `;
@@ -2018,6 +2034,50 @@ const App = {
         body.innerHTML = h;
         const input = body.querySelector('.ts-tile-input');
         if (input) { input.focus(); input.select(); }
+    },
+
+    /* --- 단계 화면 공통: 주차 표시 · 이동 · 새 주차 --- */
+    // 모든 단계 헤더의 주차 라벨을 현재 주차로 맞춤
+    _syncStepWeekBar() {
+        [1, 2, 3].forEach(n => {
+            const el = document.getElementById(`ts-week-label-${n}`);
+            if (el) el.textContent = `${this.state.currentWeek}주차 / 전체 ${this.state.maxWeek}주`;
+        });
+    },
+    stepChangeWeek(step) {
+        const nw = this.state.currentWeek + step;
+        if (nw < 1 || nw > this.state.maxWeek) {
+            this.showToast(step > 0 ? '마지막 주차입니다. "+ 새 주차"로 만들어주세요.' : '첫 주차입니다.');
+            return;
+        }
+        this.state.currentWeek = nw;
+        this.state.tileSel = null;
+        this.saveData();
+        this._refreshOpenStep();
+    },
+    stepCreateWeek() {
+        this.showConfirm('새 주차 만들기',
+            `${this.state.maxWeek + 1}주차를 새로 만듭니다.<br>전담 시간표는 자동으로 채워지고, 지금까지 만든 주차는 그대로 보관됩니다.<br><br>계속할까요?`
+        ).then(r => {
+            if (!r) return;
+            this.createNewWeek();
+            this.state.tileSel = null;
+            // 새 주차는 1단계부터 다시 시작
+            document.getElementById('step2-overlay')?.classList.add('hide');
+            document.getElementById('step3-overlay')?.classList.add('hide');
+            this.openTileStep();
+            this.showToast(`✅ ${this.state.currentWeek}주차를 만들었습니다.`);
+        });
+    },
+    // 지금 열려 있는 단계 화면만 다시 그림 (주차 이동 후 사용)
+    _refreshOpenStep() {
+        const s2 = document.getElementById('step2-overlay');
+        const s3 = document.getElementById('step3-overlay');
+        this.initWeekData(this.state.currentWeek);
+        if (s3 && !s3.classList.contains('hide')) this.renderStep3();
+        else if (s2 && !s2.classList.contains('hide')) { this._syncSpecialistTargets(this.state.currentWeek); this.renderStep2(); }
+        else this.renderTileStep();
+        this._syncStepWeekBar();
     },
 
     // 지금 열려 있는 단계 화면을 다시 그린다 (1단계/3단계 공용 타일 조작용)

@@ -26,7 +26,12 @@ document.addEventListener('DOMContentLoaded', function () {
             if (this.dom.userBadge) this.dom.userBadge.classList.add('hide');
             this._setServerBtns(true);
             this.updateNavForRole();
-            if (fromInit) this.loadFromServer().then(() => this.openTileStep());
+            if (fromInit) this.loadFromServer().then(() => {
+                // 저장된 주차 중 가장 마지막 주차부터 이어서 작업하도록 연다
+                if (this.state.maxWeek > 0) this.state.currentWeek = this.state.maxWeek;
+                this.initWeekData(this.state.currentWeek);
+                this.openTileStep();
+            });
         };
     } catch (e) {}
 });
