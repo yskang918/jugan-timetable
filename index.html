@@ -20,9 +20,8 @@
                 <nav class="top-nav">
                     <button id="btn-settings" class="nav-item">1. 설정</button>
                     <button id="btn-validation" class="nav-item">2. 시수확인</button>
-                    <button id="btn-specialist" class="nav-item">3. 전담배정</button>
                     <button id="btn-specialist-teacher" class="nav-item hide">전담시간표</button>
-                    <button id="btn-timetable-all" class="nav-item">4. 전체 시간표</button>
+                    <button id="btn-timetable-all" class="nav-item">3. 전체 시간표</button>
                     <button id="btn-timetable" class="nav-item active hide">반별 시간표</button>
                 </nav>
                 <div class="header-right">
@@ -118,6 +117,53 @@
                     </div>
 
                     <button id="btn-save-settings" class="btn-primary" style="width:100%; padding:16px; font-size:1.05rem; font-weight:700; margin-top:16px;">💾 학교 기본 정보 + 운영 과목 저장</button>
+
+                    <!-- Merged: 전담 배정 보드 -->
+                    <div id="specialist-view">
+                        <div id="sp-split-wrap">
+                            <div id="sp-left-panel" class="card" style="min-width:0;">
+                                <div class="section-header">
+                                    <h2 style="display:flex; align-items:center; gap:6px;">전담 보드
+                                        <button onclick="App.spChangeWeek(-1)" class="btn-icon">&lt;</button>
+                                        <span id="sp-week-badge" style="font-size:0.8rem; font-weight:600; color:#6366f1; background:#ede9fe; padding:2px 10px; border-radius:20px;"></span>
+                                        <button onclick="App.spChangeWeek(1)" class="btn-icon">&gt;</button>
+                                    </h2>
+                                    <div style="display:flex; gap:8px; align-items:center;">
+                                        <div id="helper-toolbar" style="display:flex; gap:8px; align-items:center; padding:4px 8px; border-radius:8px; background:#f9fafb; border:1px solid #e5e7eb;">
+                                            <button id="btn-toggle-helper" class="btn-secondary btn-sm">🎯 배정 도우미</button>
+                                            <button id="btn-run-helper" class="btn-primary-small" style="display:none;" onclick="App.openHelperAssignment()">배정 실행 →</button>
+                                        </div>
+                                        <div id="marking-toolbar" style="display:flex; gap:8px; align-items:center; padding:4px 8px; border-radius:8px; background:#f9fafb; border:1px solid #e5e7eb;">
+                                            <button id="btn-toggle-marking" class="btn-secondary btn-sm">✍️ 마킹 모드 : OFF</button>
+                                            <div id="marking-color-picker" style="display:none; gap:6px; margin-left:4px;">
+                                                <div class="mark-color-btn active" style="background:#fef08a;" data-color="#fef08a" title="연노랑"></div>
+                                                <div class="mark-color-btn" style="background:#dcfce7;" data-color="#dcfce7" title="연초록"></div>
+                                                <div class="mark-color-btn" style="background:#dbeafe;" data-color="#dbeafe" title="연파랑"></div>
+                                                <div class="mark-color-btn" style="background:#e0e7ff;" data-color="#e0e7ff" title="연보라"></div>
+                                                <div class="mark-color-btn" style="background:#ffedd5;" data-color="#ffedd5" title="연주황"></div>
+                                            </div>
+                                        </div>
+                                        <button id="btn-toggle-sp-preview" class="btn-secondary btn-sm">반별 미리보기</button>
+                                        <button id="btn-add-specialist" class="btn-primary-small">+ 전담 추가</button>
+                                        <button id="btn-save-specialist" class="btn-primary-small" onclick="App.saveSpecialistToServer()">저장</button>
+                                    </div>
+                                </div>
+                                <p class="subtitle mt-4">과목명과 설명을 입력하고, 표 안에 해당 교시를 담당할 <b>반 번호</b>를 입력하세요.</p>
+
+                                <div class="specialist-layout mt-4">
+                                    <div id="specialist-boards-container" class="sp-boards-wrap"></div>
+                                    <div id="specialist-summary-container" class="sp-summary-panel"></div>
+                                </div>
+                            </div>
+                            <div id="sp-right-panel" class="card" style="display:none; min-width:0;">
+                                <div class="section-header" style="padding-bottom:12px;">
+                                    <h3 style="font-size:1rem;">반별 배치 미리보기</h3>
+                                    <span class="subtitle" style="font-size:0.8rem;">입력과 동시에 실시간 반영</span>
+                                </div>
+                                <div id="sp-preview-content" style="overflow-y:auto;"></div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </section>
 
@@ -144,53 +190,6 @@
                         <span class="text-xs text-gray-500">※ 0은 일치, +는 초과, -는 부족을 의미합니다.</span>
                     </div>
                     <div id="class-deviation-container" class="mt-3"></div>
-                </div>
-            </section>
-
-            <!-- 3. Specialist View -->
-            <section id="specialist-view" class="hide">
-                <div id="sp-split-wrap">
-                    <div id="sp-left-panel" class="card" style="min-width:0;">
-                        <div class="section-header">
-                            <h2 style="display:flex; align-items:center; gap:6px;">전담 보드
-                                <button onclick="App.spChangeWeek(-1)" class="btn-icon">&lt;</button>
-                                <span id="sp-week-badge" style="font-size:0.8rem; font-weight:600; color:#6366f1; background:#ede9fe; padding:2px 10px; border-radius:20px;"></span>
-                                <button onclick="App.spChangeWeek(1)" class="btn-icon">&gt;</button>
-                            </h2>
-                            <div style="display:flex; gap:8px; align-items:center;">
-                                <div id="helper-toolbar" style="display:flex; gap:8px; align-items:center; padding:4px 8px; border-radius:8px; background:#f9fafb; border:1px solid #e5e7eb;">
-                                    <button id="btn-toggle-helper" class="btn-secondary btn-sm">🎯 배정 도우미</button>
-                                    <button id="btn-run-helper" class="btn-primary-small" style="display:none;" onclick="App.openHelperAssignment()">배정 실행 →</button>
-                                </div>
-                                <div id="marking-toolbar" style="display:flex; gap:8px; align-items:center; padding:4px 8px; border-radius:8px; background:#f9fafb; border:1px solid #e5e7eb;">
-                                    <button id="btn-toggle-marking" class="btn-secondary btn-sm">✍️ 마킹 모드 : OFF</button>
-                                    <div id="marking-color-picker" style="display:none; gap:6px; margin-left:4px;">
-                                        <div class="mark-color-btn active" style="background:#fef08a;" data-color="#fef08a" title="연노랑"></div>
-                                        <div class="mark-color-btn" style="background:#dcfce7;" data-color="#dcfce7" title="연초록"></div>
-                                        <div class="mark-color-btn" style="background:#dbeafe;" data-color="#dbeafe" title="연파랑"></div>
-                                        <div class="mark-color-btn" style="background:#e0e7ff;" data-color="#e0e7ff" title="연보라"></div>
-                                        <div class="mark-color-btn" style="background:#ffedd5;" data-color="#ffedd5" title="연주황"></div>
-                                    </div>
-                                </div>
-                                <button id="btn-toggle-sp-preview" class="btn-secondary btn-sm">반별 미리보기</button>
-                                <button id="btn-add-specialist" class="btn-primary-small">+ 전담 추가</button>
-                                <button id="btn-save-specialist" class="btn-primary-small" onclick="App.saveSpecialistToServer()">저장</button>
-                            </div>
-                        </div>
-                        <p class="subtitle mt-4">과목명과 설명을 입력하고, 표 안에 해당 교시를 담당할 <b>반 번호</b>를 입력하세요.</p>
-
-                        <div class="specialist-layout mt-4">
-                            <div id="specialist-boards-container" class="sp-boards-wrap"></div>
-                            <div id="specialist-summary-container" class="sp-summary-panel"></div>
-                        </div>
-                    </div>
-                    <div id="sp-right-panel" class="card" style="display:none; min-width:0;">
-                        <div class="section-header" style="padding-bottom:12px;">
-                            <h3 style="font-size:1rem;">반별 배치 미리보기</h3>
-                            <span class="subtitle" style="font-size:0.8rem;">입력과 동시에 실시간 반영</span>
-                        </div>
-                        <div id="sp-preview-content" style="overflow-y:auto;"></div>
-                    </div>
                 </div>
             </section>
 

@@ -162,7 +162,6 @@ const App = {
         this.dom = {
             menus: {
                 settings: document.getElementById('settings-view'),
-                specialist: document.getElementById('specialist-view'),
                 'specialist-teacher': document.getElementById('specialist-teacher-view'),
                 timetable: document.getElementById('timetable-view'),
                 'timetable-all': document.getElementById('timetable-view')
@@ -903,7 +902,7 @@ const App = {
     updateNavForRole() {
         const isAdmin = this.state.isAdmin;
         const isLocalMode = window._appMode === 'local';
-        const adminOnlyIds = ['btn-settings', 'btn-validation', 'btn-specialist', 'btn-timetable-all'];
+        const adminOnlyIds = ['btn-settings', 'btn-validation', 'btn-timetable-all'];
         adminOnlyIds.forEach(id => {
             const el = document.getElementById(id);
             if (el) el.classList.toggle('hide', !isAdmin);
@@ -942,7 +941,7 @@ const App = {
         if (activeNav) activeNav.classList.add('active');
         // 전담 미저장 경고
         const currentMenu = document.querySelector('.nav-item.active')?.id?.replace('btn-', '');
-        if (currentMenu === 'specialist' && menuId !== 'specialist' && this.state.isSpDirty) {
+        if (currentMenu === 'settings' && menuId !== 'settings' && this.state.isSpDirty) {
             const go = await this.showConfirm('전담 미저장 경고', '전담 데이터가 서버에 저장되지 않았습니다.<br>저장하지 않고 이동하면 다른 기기에 반영되지 않습니다.<br><br>그래도 이동하시겠습니까?');
             if (!go) return;
         }
@@ -952,8 +951,7 @@ const App = {
         if (this.dom.menus[menuId]) this.dom.menus[menuId].classList.remove('hide');
         if (menuId === 'timetable') this.renderTimetableLayout('single');
         else if (menuId === 'timetable-all') this.renderTimetableLayout('all');
-        else if (menuId === 'settings') this.renderSettingsView();
-        else if (menuId === 'specialist') this.renderSpecialistView();
+        else if (menuId === 'settings') { this.renderSettingsView(); this.renderSpecialistView(); }
         else if (menuId === 'specialist-teacher') this.renderSpecialistTeacherView();
         else if (menuId === 'validation') this.calculateAndRenderValidationView();
     },
@@ -2770,7 +2768,16 @@ const App = {
             if (badge) badge.textContent = idx + 1;
         });
     },
-    // 과목명 기준 가나다순 정렬(이름이 비어있는 입력 중인 행은 맨 뒤로)
+    // 과목명 기준 정렬: 국어,사회,도덕,수학,과학,체육,음악,미술,영어,자율,동아리,봉사,진로 순서로 배치하고,
+    // "국(도)"처럼 앞글자가 같은 과목은 해당 기본 과목 바로 뒤(다음 기본 과목 앞)에 끼워넣는다.
+    _subjectSortKey(name) {
+        const baseOrder = ["국어", "사회", "도덕", "수학", "과학", "체육", "음악", "미술", "영어", "자율", "동아리", "봉사", "진로"];
+        const firstCharIdx = {};
+        baseOrder.forEach((s, i) => { firstCharIdx[s[0]] = i; });
+        const group = (name[0] in firstCharIdx) ? firstCharIdx[name[0]] : baseOrder.length;
+        const isBase = baseOrder.includes(name) ? 0 : 1;
+        return { group, isBase, name };
+    },
     sortSubjectRows() {
         const rows = [...this.dom.subjectList.querySelectorAll('.subject-row')];
         rows.sort((a, b) => {
@@ -2779,6 +2786,9 @@ const App = {
             if (!an && !bn) return 0;
             if (!an) return 1;
             if (!bn) return -1;
+            const ka = this._subjectSortKey(an), kb = this._subjectSortKey(bn);
+            if (ka.group !== kb.group) return ka.group - kb.group;
+            if (ka.isBase !== kb.isBase) return ka.isBase - kb.isBase;
             return an.localeCompare(bn, 'ko');
         });
         rows.forEach(r => this.dom.subjectList.appendChild(r));
