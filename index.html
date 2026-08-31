@@ -247,6 +247,7 @@
                         <button id="btn-clear-all" class="btn-secondary btn-sm" style="color:#ef4444;">반별 시간표 삭제</button>
                     </div>
                     <div class="global-actions">
+                        <button id="btn-open-tile-step" class="btn-primary-small" style="background-color:#6366f1;" onclick="App.openTileStep()">🗂️ 1단계: 크게 보기·정리</button>
                         <button id="btn-server-save" class="btn-server-action btn-server-save-style" onclick="App.saveToServer()" title="지금까지의 모든 변경사항을 저장합니다">💾 반별 시간표 저장</button>
                         <button id="btn-print-guide" class="btn-primary-small ml-4" style="background-color: #3b82f6;">📄 주간학습안내</button>
                         <button id="btn-export-excel" class="btn-primary-small" style="background-color: #16a34a;" onclick="App.exportWeekToExcel()">📊 엑셀로 내보내기</button>
@@ -356,6 +357,16 @@
 
     <!-- Print Area -->
     <div id="print-area" class="print-only"></div>
+
+    <!-- 1단계: 반별 시간표 크게 보기·정리 오버레이 -->
+    <div id="tile-step-overlay" class="hide">
+        <div class="ts-header">
+            <div class="ts-title">🗂️ 1단계 — 반별 시간표 정리</div>
+            <div class="ts-header-sub">과목을 누르면 흔들려요. 다른 칸을 누르면 자리가 바뀌고, <span class="ts-x-hint">✕</span>를 누르면 지워져요.</div>
+            <button id="btn-close-tile-step" class="ppo-close-btn" onclick="App.closeTileStep()" title="닫기">&times;</button>
+        </div>
+        <div id="tile-step-body" class="ts-body"></div>
+    </div>
 
     <!-- 주간학습안내 미리보기 오버레이 -->
     <div id="print-preview-overlay" class="hide">

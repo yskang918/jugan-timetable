@@ -413,6 +413,44 @@ const App = {
         document.getElementById('btn-random-all').addEventListener('click', () => this.randomAssignAll());
         document.getElementById('btn-print-guide').addEventListener('click', () => this.printWeeklyGuide());
         document.getElementById('btn-ppo-close').addEventListener('click', () => document.getElementById('print-preview-overlay').classList.add('hide'));
+
+        // 🗂️ 1단계 타일 보드
+        // mousedown에서 처리하는 이유: click은 브라우저가 먼저 발생시키는 blur보다 늦게 오는데,
+        // blur가 즉시 재렌더링을 일으키면 클릭 대상 타일이 DOM에서 떨어져나가 click이 못 잡힘.
+        // mousedown 시점에 선점해서 편집 중이던 값을 먼저 커밋하고, 이어서 우리가 직접 처리한다.
+        const tsBody = document.getElementById('tile-step-body');
+        if (tsBody) {
+            tsBody.addEventListener('mousedown', (e) => {
+                if (e.target.closest('.ts-tile-input')) return; // 입력 중인 칸 자체를 누르는 건 그대로 둠
+                e.preventDefault();
+
+                const openInput = tsBody.querySelector('.ts-tile-input');
+                if (openInput) {
+                    const wData = this.state.history[this.state.currentWeek];
+                    wData.classes[openInput.dataset.cls][openInput.dataset.day][parseInt(openInput.dataset.idx)] = openInput.value.trim();
+                }
+
+                const xBtn = e.target.closest('.ts-tile-x');
+                if (xBtn) { this.tileClearX(xBtn.dataset.cls, xBtn.dataset.day, parseInt(xBtn.dataset.idx)); return; }
+
+                const tile = e.target.closest('.ts-tile');
+                if (!tile || tile.classList.contains('ts-tile-none')) {
+                    this.state.tileSel = null;
+                    this.saveData();
+                    this.renderTileStep();
+                    return;
+                }
+                this.tileClick(tile.dataset.cls, tile.dataset.day, parseInt(tile.dataset.idx));
+            });
+            tsBody.addEventListener('keydown', (e) => {
+                if (e.target.classList.contains('ts-tile-input') && e.key === 'Enter') e.target.blur();
+            });
+            tsBody.addEventListener('blur', (e) => {
+                if (e.target.classList.contains('ts-tile-input')) {
+                    this.tileInputCommit(e.target.dataset.cls, e.target.dataset.day, parseInt(e.target.dataset.idx), e.target.value);
+                }
+            }, true);
+        }
         document.getElementById('btn-ppo-check').addEventListener('click', () => this.runFinalCheck());
         document.getElementById('btn-ppo-print').addEventListener('click', () => this.printPDF());
         document.getElementById('btn-ppo-download').addEventListener('click', () => this.downloadPDF());
@@ -1539,6 +1577,126 @@ const App = {
             h += `</tr>`;
         }
         return h + '</tbody>';
+    },
+
+    /* --- 1단계: 반별 시간표 크게 보기·정리 (타일 보드) --- */
+    openTileStep() {
+        this.state.tileSel = null;
+        document.getElementById('tile-step-overlay').classList.remove('hide');
+        this.renderTileStep();
+    },
+    closeTileStep() {
+        this.state.tileSel = null;
+        document.getElementById('tile-step-overlay').classList.add('hide');
+        // 반영된 변경사항을 일반 화면에도 즉시 보이게
+        this.renderTimetableLayout();
+    },
+
+    renderTileStep() {
+        const body = document.getElementById('tile-step-body');
+        if (!body) return;
+        const wData = this.state.history[this.state.currentWeek];
+        const maxP = Math.max(...Object.values(this.state.config.periods));
+        const sel = this.state.tileSel;
+
+        let h = '';
+        for (let c = 1; c <= this.state.config.classCount; c++) {
+            const cStr = String(c);
+            if (!wData.classes[cStr]) wData.classes[cStr] = { "월": [], "화": [], "수": [], "목": [], "금": [] };
+            const data = wData.classes[cStr];
+            const spCells = wData.specialistCells || {};
+
+            h += `<div class="ts-class-card"><div class="ts-class-title">${c}반</div><div class="ts-grid">`;
+            h += `<div></div>${this.days.map(d => `<div class="ts-head">${d}</div>`).join('')}`;
+            for (let p = 0; p < maxP; p++) {
+                h += `<div class="ts-period-label">${p + 1}</div>`;
+                this.days.forEach(d => {
+                    if (p >= this.state.config.periods[d]) { h += `<div class="ts-tile ts-tile-none"></div>`; return; }
+                    const val = data[d][p] || '';
+                    const isSel = !!(sel && sel.cls === cStr && sel.day === d && sel.p === p);
+                    const isSpLocked = !!(spCells[cStr]?.[d]?.[p]);
+                    const sp = isSpLocked ? this._spForCell(c, d, p) : null;
+                    const bg = (!isSel && sp && sp.bg) ? ` style="background-color:${sp.bg};"` : '';
+                    const cls = `ts-tile${!val ? ' ts-tile-empty' : ''}${isSel ? ' ts-tile-selected' : ''}`;
+
+                    if (isSel) {
+                        h += `<div class="${cls}" data-cls="${cStr}" data-day="${d}" data-idx="${p}">
+                            <input type="text" class="ts-tile-input" value="${val}" data-cls="${cStr}" data-day="${d}" data-idx="${p}">
+                            ${val ? `<div class="ts-tile-x" data-cls="${cStr}" data-day="${d}" data-idx="${p}">✕</div>` : ''}
+                        </div>`;
+                    } else {
+                        h += `<div class="${cls}"${bg} data-cls="${cStr}" data-day="${d}" data-idx="${p}"><span class="ts-tile-label">${val}</span></div>`;
+                    }
+                });
+            }
+            h += `</div></div>`;
+        }
+        body.innerHTML = h;
+
+        const input = body.querySelector('.ts-tile-input');
+        if (input) { input.focus(); input.select(); }
+    },
+
+    // 타일 클릭: 아무것도 선택 안 된 상태 → 이 칸을 선택(분홍+흔들림)
+    //           같은 칸을 다시 클릭 → 선택 해제
+    //           다른 칸 클릭 → 두 칸의 내용을 서로 교환
+    tileClick(cStr, d, p) {
+        const sel = this.state.tileSel;
+        const wData = this.state.history[this.state.currentWeek];
+        if (!sel) {
+            this.state.tileSel = { cls: cStr, day: d, p };
+        } else if (sel.cls === cStr && sel.day === d && sel.p === p) {
+            this.state.tileSel = null;
+        } else {
+            const a = wData.classes[sel.cls][sel.day], b = wData.classes[cStr][d];
+            const tmp = a[sel.p] || '';
+            a[sel.p] = b[p] || '';
+            b[p] = tmp;
+            this._swapSpecialistLock(sel.cls, sel.day, sel.p, cStr, d, p);
+            this.state.tileSel = null;
+            this.state.isDirty = true;
+            this.saveData();
+        }
+        this.renderTileStep();
+    },
+
+    // 두 칸을 맞바꿀 때 "전담 잠금" 표시도 같이 따라가게 함
+    _swapSpecialistLock(cls1, d1, p1, cls2, d2, p2) {
+        const wData = this.state.history[this.state.currentWeek];
+        if (!wData.specialistCells) wData.specialistCells = {};
+        const sc = wData.specialistCells;
+        const get = (c, d, p) => !!(sc[c]?.[d]?.[p]);
+        const set = (c, d, p, v) => {
+            if (v) {
+                if (!sc[c]) sc[c] = {};
+                if (!sc[c][d]) sc[c][d] = {};
+                sc[c][d][p] = true;
+            } else {
+                if (sc[c]?.[d]) delete sc[c][d][p];
+            }
+        };
+        const v1 = get(cls1, d1, p1), v2 = get(cls2, d2, p2);
+        set(cls1, d1, p1, v2);
+        set(cls2, d2, p2, v1);
+    },
+
+    tileClearX(cStr, d, p) {
+        const wData = this.state.history[this.state.currentWeek];
+        wData.classes[cStr][d][p] = '';
+        if (wData.specialistCells?.[cStr]?.[d]) delete wData.specialistCells[cStr][d][p];
+        this.state.tileSel = null;
+        this.state.isDirty = true;
+        this.saveData();
+        this.renderTileStep();
+    },
+
+    tileInputCommit(cStr, d, p, val) {
+        const wData = this.state.history[this.state.currentWeek];
+        wData.classes[cStr][d][p] = val.trim();
+        this.state.tileSel = null;
+        this.state.isDirty = true;
+        this.saveData();
+        this.renderTileStep();
     },
 
     /* --- Validation --- */
