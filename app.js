@@ -1701,51 +1701,59 @@ const App = {
         const subjects = this._step2Subjects();
 
         let sum = 0;
-        let cards = '';
+        let editable = '';
+        let fixed = '';
+
         subjects.forEach(s => {
             const sub = s.name;
-            const fixed = this._isSpecialistManagedSubject(sub);
-
-            if (fixed) {
-                // 1단계에서 고정된 과목 — 실제 배정된 차시를 그대로 보여줌(수정 불가)
-                const cc = this._classCountsForSubject(week, sub);
-                wData.targets[sub] = cc.max;
-                sum += cc.max;
-                cards += `<div class="s2-item s2-item-fixed">
-                    <div class="s2-item-head">
-                        <span class="s2-sub">${sub}</span>
-                        <span class="s2-badge">1단계 고정</span>
-                    </div>
-                    <div class="s2-item-body">
-                        <span class="s2-auto">${cc.max}</span>
-                    </div>
+            if (this._isSpecialistManagedSubject(sub)) {
+                // 1단계에서 자리가 정해진 과목 — 실제 배정된 차시를 그대로 보여줌(수정 불가)
+                const n = this._classCountsForSubject(week, sub).max;
+                wData.targets[sub] = n;
+                sum += n;
+                fixed += `<div class="s2-chip">
+                    <span class="s2-chip-name">${sub}</span>
+                    <span class="s2-chip-num">${n}</span>
                 </div>`;
                 return;
             }
-
             const val = wData.targets[sub] || 0;
             sum += val;
             const cfg = (this.state.config.subjects || []).find(x => x.name === sub);
-            const isBlock = !!(cfg && cfg.blockSize > 1);
-            cards += `<div class="s2-item">
-                <div class="s2-item-head">
-                    <span class="s2-sub">${sub}</span>
-                </div>
-                <div class="s2-item-body">
-                    <input type="number" min="0" class="s2-input" value="${val}" data-sub="${sub}">
-                    <label class="s2-toggle${isBlock ? ' on' : ''}" title="켜면 랜덤 배정 시 2차시를 연달아 붙여서 배정합니다.">
-                        <input type="checkbox" data-block-sub="${sub}" ${isBlock ? 'checked' : ''}>
-                        <span class="s2-track"><span class="s2-knob"></span></span>
-                        <span class="s2-toggle-label">연차시</span>
-                    </label>
-                </div>
+            const on = !!(cfg && cfg.blockSize > 1);
+            editable += `<div class="s2-item">
+                <div class="s2-item-name">${sub}</div>
+                <input type="number" min="0" class="s2-input" value="${val}" data-sub="${sub}">
+                <label class="s2-toggle${on ? ' on' : ''}" title="켜면 랜덤 배정 시 2차시를 붙여서 연달아 배정합니다.">
+                    <input type="checkbox" data-block-sub="${sub}" ${on ? 'checked' : ''}>
+                    <span class="s2-track"><span class="s2-knob"></span></span>
+                    <span class="s2-toggle-label">연차시</span>
+                </label>
             </div>`;
         });
 
         body.innerHTML = `
-            <div class="s2-wrap">
-                <div class="s2-grid">${cards}</div>
-                <div class="s2-summary">이번 주 합계 <b class="s2-total">${sum}</b>차시</div>
+            <div class="s2-panel">
+                <div class="s2-panel-head">
+                    <div>
+                        <div class="s2-panel-title">이번 주 과목별 차시</div>
+                        <div class="s2-panel-desc">차시를 입력하고, 2차시를 붙여서 배정할 과목은 <b>연차시</b>를 켜세요.</div>
+                    </div>
+                    <div class="s2-total-box">
+                        <div class="s2-total-label">이번 주 합계</div>
+                        <div class="s2-total-num"><b class="s2-total">${sum}</b><span>차시</span></div>
+                    </div>
+                </div>
+
+                <div class="s2-section">
+                    <div class="s2-section-label">직접 입력</div>
+                    <div class="s2-grid">${editable}</div>
+                </div>
+
+                ${fixed ? `<div class="s2-section">
+                    <div class="s2-section-label s2-section-label-fixed">1단계 고정 <span>· 1단계에서 정한 자리대로 자동 계산됩니다</span></div>
+                    <div class="s2-chips">${fixed}</div>
+                </div>` : ''}
             </div>`;
 
         body.querySelectorAll('.s2-input').forEach(inp => {

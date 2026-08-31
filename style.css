@@ -481,69 +481,99 @@ td.duplicate-error { background-color: #fee2e2 !important; border: 2px solid #ef
     background: #f1f5f9;
 }
 #step2-overlay.hide { display: none !important; }
-/* 2단계 본문은 스크롤하지 않고 한 화면에 담는다 */
-.s2-body { overflow: hidden; min-height: 0; padding: 14px 18px; }
-.s2-wrap {
-    height: 100%;
-    display: flex; flex-direction: column; gap: 12px;
+/* --- 2단계 --- */
+/* 스크롤 없이 한 화면에 담고, 내용은 화면 가운데에 둔다 */
+.s2-body {
+    overflow: hidden; min-height: 0; padding: 20px;
+    display: flex; align-items: center; justify-content: center;
 }
-/* 모든 과목이 한 화면에 들어오도록 가로로도 흐르게 배치 */
+.s2-panel {
+    width: 100%; max-width: 1180px; max-height: 100%;
+    background: #fff; border-radius: 20px; box-shadow: var(--shadow-md);
+    padding: 24px 28px 26px;
+    display: flex; flex-direction: column; gap: 20px;
+    overflow: hidden;
+}
+
+.s2-panel-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 20px;
+    padding-bottom: 16px; border-bottom: 1.5px solid var(--border-color);
+    flex-shrink: 0;
+}
+.s2-panel-title { font-size: 1.2rem; font-weight: 800; color: var(--text-main); }
+.s2-panel-desc { font-size: 0.85rem; color: var(--text-sub); margin-top: 3px; }
+.s2-panel-desc b { color: var(--primary-color); }
+
+.s2-total-box {
+    text-align: right; background: #f0fdf4; border: 1.5px solid #bbf7d0;
+    border-radius: 14px; padding: 8px 20px; flex-shrink: 0;
+}
+.s2-total-label { font-size: 0.74rem; font-weight: 700; color: #15803d; }
+.s2-total-num { display: flex; align-items: baseline; gap: 3px; justify-content: flex-end; }
+.s2-total-num b { font-size: 2rem; font-weight: 800; color: #15803d; line-height: 1.1; }
+.s2-total-num span { font-size: 0.9rem; font-weight: 700; color: #15803d; }
+
+.s2-section { display: flex; flex-direction: column; gap: 10px; min-height: 0; }
+.s2-section-label {
+    font-size: 0.8rem; font-weight: 800; color: var(--text-sub);
+    letter-spacing: 0.02em;
+}
+.s2-section-label-fixed { color: #6d28d9; }
+.s2-section-label span { font-weight: 600; color: var(--text-sub); }
+
+/* 직접 입력 과목 카드 */
 .s2-grid {
-    flex: 1; min-height: 0; overflow: hidden;
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-    grid-auto-rows: minmax(0, max-content);
-    gap: 10px;
-    align-content: start;
+    grid-template-columns: repeat(auto-fill, minmax(178px, 1fr));
+    gap: 12px;
 }
 .s2-item {
-    background: #fff; border-radius: 12px; box-shadow: var(--shadow-md);
-    padding: 10px 12px; display: flex; flex-direction: column; gap: 6px;
+    border: 1.5px solid var(--border-color); border-radius: 14px;
+    padding: 12px 14px 11px;
+    display: flex; flex-direction: column; gap: 9px;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
-.s2-item-fixed { background: #faf9ff; }
-.s2-item-head { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.s2-item-body { display: flex; align-items: center; gap: 10px; }
-.s2-sub { font-size: 0.95rem; font-weight: 800; color: var(--text-main); }
-.s2-badge {
-    font-size: 0.64rem; font-weight: 800; color: #4f46e5;
-    background: #ede9fe; border-radius: 20px; padding: 2px 8px;
-}
-.s2-auto {
-    display: inline-block; min-width: 56px; text-align: center;
-    font-size: 0.95rem; font-weight: 800; color: #4f46e5;
-    background: #ede9fe; border: 1.5px solid #ddd6fe; border-radius: 8px; padding: 5px 10px;
-}
+.s2-item:focus-within { border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(22,163,74,0.1); }
+.s2-item-name { font-size: 1.02rem; font-weight: 800; color: var(--text-main); }
 .s2-input {
-    width: 64px; text-align: center; font-size: 0.95rem; font-weight: 700;
-    color: var(--text-main); padding: 5px 8px;
-    border: 1.5px solid var(--border-color); border-radius: 8px; outline: none;
+    width: 100%; text-align: center;
+    font-size: 1.25rem; font-weight: 800; color: var(--text-main);
+    padding: 7px 8px; background: #f8fafc;
+    border: 1.5px solid var(--border-color); border-radius: 10px; outline: none;
 }
-.s2-input:focus { border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(22,163,74,0.12); }
+.s2-input:focus { border-color: var(--primary-color); background: #fff; }
 
 /* 연차시 토글 */
-.s2-toggle { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; user-select: none; }
+.s2-toggle { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; }
 .s2-toggle input { position: absolute; opacity: 0; width: 0; height: 0; }
 .s2-track {
-    width: 32px; height: 18px; border-radius: 20px; background: #cbd5e1;
+    width: 34px; height: 19px; border-radius: 20px; background: #cbd5e1;
     position: relative; transition: background 0.15s ease; flex-shrink: 0;
 }
 .s2-knob {
     position: absolute; top: 2px; left: 2px;
-    width: 14px; height: 14px; border-radius: 50%; background: #fff;
+    width: 15px; height: 15px; border-radius: 50%; background: #fff;
     transition: transform 0.15s ease; box-shadow: 0 1px 2px rgba(0,0,0,0.25);
 }
 .s2-toggle.on .s2-track { background: var(--primary-color); }
-.s2-toggle.on .s2-knob { transform: translateX(14px); }
-.s2-toggle-label { font-size: 0.72rem; font-weight: 700; color: var(--text-sub); white-space: nowrap; }
+.s2-toggle.on .s2-knob { transform: translateX(15px); }
+.s2-toggle-label { font-size: 0.78rem; font-weight: 700; color: var(--text-sub); white-space: nowrap; }
 .s2-toggle.on .s2-toggle-label { color: var(--primary-color); }
 .s2-toggle input:focus-visible + .s2-track { box-shadow: 0 0 0 3px rgba(22,163,74,0.25); }
 
-.s2-summary {
-    flex-shrink: 0;
-    padding: 10px 14px; border-radius: 10px; background: #e2e8f0; color: #334155;
-    font-size: 0.9rem; font-weight: 700; text-align: center;
+/* 1단계 고정 과목 — 읽기 전용이라 작은 칩으로 */
+.s2-chips { display: flex; flex-wrap: wrap; gap: 10px; }
+.s2-chip {
+    display: inline-flex; align-items: center; gap: 10px;
+    background: #f5f3ff; border: 1.5px solid #ddd6fe; border-radius: 12px;
+    padding: 9px 14px;
 }
-.s2-summary b { font-size: 1.15rem; color: var(--text-main); }
+.s2-chip-name { font-size: 0.98rem; font-weight: 800; color: #5b21b6; }
+.s2-chip-num {
+    font-size: 1.1rem; font-weight: 800; color: #4f46e5;
+    background: #fff; border: 1.5px solid #ddd6fe; border-radius: 8px;
+    min-width: 38px; text-align: center; padding: 1px 8px;
+}
 .ts-body-plain .settings-page { max-width: 1600px; margin: 0 auto; padding-bottom: 40px; }
 
 /* 한 화면에 모든 반이 들어가도록: 세로로도 남는 높이를 행끼리 균등하게 나눠 갖고,
