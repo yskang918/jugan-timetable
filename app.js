@@ -1265,7 +1265,7 @@ const App = {
                 const fc = this._subjectFamily(sub);
                 return !!(famDays[fc] && famDays[fc].has(d));
             };
-            this.days.forEach(d => { const mp = this.state.config.periods[d]; if(!cd[d]) cd[d] = []; for(let p=0; p<mp; p++){ const v = cd[d][p]; if(v) { if (cur[v] !== undefined) { cur[v]++; if(!pd[v].includes(d)) pd[v].push(d); } markFamily(v, d); } } });
+            this.days.forEach(d => { const mp = this.state.config.periods[d]; if(!cd[d]) cd[d] = []; for(let p=0; p<mp; p++){ const v = cd[d][p]; if(v) { const bv = this._baseOf(v); if (cur[bv] !== undefined) { cur[bv]++; if(!pd[bv].includes(d)) pd[bv].push(d); } markFamily(v, d); } } });
 
             const blks = [], sngs = [];
             selected.forEach(sO => {
@@ -1674,6 +1674,8 @@ const App = {
     step2Next() {
         document.getElementById('step2-overlay').classList.add('hide');
         this.openStep3();
+        // 고정 시간표는 그대로 두고 나머지 과목을 자동으로 배정
+        this._step3FillEmpty();
     },
 
     /* --- 3단계: 반별 시간표 배정 --- */
@@ -1695,9 +1697,13 @@ const App = {
         const wData = this.state.history[this.state.currentWeek];
         const cd = wData.classes[cStr] || {};
         const placed = {};
-        this.days.forEach(d => (cd[d] || []).forEach(v => { if (v) placed[v] = (placed[v] || 0) + 1; }));
-        const rows = this._step2Subjects()
-            .map(s => s.name)
+        // 국(도)는 국어로, 체(강)은 체육으로 세어 기본 과목 기준으로 집계
+        this.days.forEach(d => (cd[d] || []).forEach(v => {
+            if (!v) return;
+            const b = this._baseOf(v);
+            placed[b] = (placed[b] || 0) + 1;
+        }));
+        const rows = this._step2BaseSubjects()
             .filter(sub => (wData.targets[sub] || 0) > 0 || placed[sub])
             .map(sub => ({ sub, got: placed[sub] || 0, want: wData.targets[sub] || 0 }));
         const empty = this.days.reduce((a, d) => {
@@ -1737,16 +1743,31 @@ const App = {
         if (input) { input.focus(); input.select(); }
     },
 
-    // 고정된 칸은 그대로 두고 나머지를 지운 뒤 2단계 차시에 맞춰 다시 배정
-    step3Reassign() {
+    // 3단계에서 자동 배정할 과목 목록 (기본 과목 기준, 전담으로 이미 고정된 과목은 제외)
+    _step3Selected() {
         const wData = this.state.history[this.state.currentWeek];
-        const selected = this._step2Subjects()
-            .map(s => s.name)
+        return this._step2BaseSubjects()
             .filter(sub => (wData.targets[sub] || 0) > 0 && !this._isSpecialistManagedSubject(sub))
             .map(sub => {
                 const cfg = (this.state.config.subjects || []).find(x => x.name === sub);
                 return { name: sub, blockSize: cfg && cfg.blockSize > 1 ? cfg.blockSize : 1 };
             });
+    },
+
+    // 2단계에서 넘어올 때: 고정 칸은 그대로 두고 빈 칸만 자동으로 채운다
+    _step3FillEmpty() {
+        const selected = this._step3Selected();
+        if (selected.length === 0) return;
+        this.executeRandomAssign(selected, { onDone: () => {
+            this.renderStep3();
+            this.showToast('✅ 빈 칸을 자동으로 배정했습니다.');
+        }});
+    },
+
+    // 고정된 칸은 그대로 두고 나머지를 지운 뒤 2단계 차시에 맞춰 다시 배정
+    step3Reassign() {
+        const wData = this.state.history[this.state.currentWeek];
+        const selected = this._step3Selected();
         if (selected.length === 0) {
             this.showAlert('배정할 과목 없음', '2단계에서 과목별 차시를 먼저 입력해주세요.');
             return;
@@ -1946,6 +1967,45 @@ const App = {
         this.showToast('✅ 이미지로 저장했습니다.');
     },
 
+    // "국(도)" -> "국어", "체(강)/체(운)" -> "체육", "과(실)" -> "과학" 처럼
+    // 괄호가 붙은 파생 과목을 앞글자가 같은 기본 과목으로 바꿔준다. 아니면 그대로.
+    _baseOf(name) {
+        if (!name || name.indexOf('(') < 0) return name;
+        const baseOrder = ["국어", "사회", "도덕", "수학", "과학", "체육", "음악", "미술", "영어", "자율", "동아리", "봉사", "진로"];
+        const hit = baseOrder.find(b => b[0] === name[0]);
+        return hit || name;
+    },
+
+    // 2단계·3단계에서 다루는 "기본 과목" 목록 (괄호 붙은 파생 과목은 제외)
+    _step2BaseSubjects() {
+        const names = [];
+        this._step2Subjects().forEach(s => {
+            const b = this._baseOf(s.name);
+            if (!names.includes(b)) names.push(b);
+        });
+        return names.sort((a, b) => {
+            const ka = this._subjectSortKey(a), kb = this._subjectSortKey(b);
+            if (ka.group !== kb.group) return ka.group - kb.group;
+            if (ka.isBase !== kb.isBase) return ka.isBase - kb.isBase;
+            return a.localeCompare(b, 'ko');
+        });
+    },
+
+    // 이 기본 과목에 이미 고정(1단계)으로 들어가 있는 차시 수와, 그 내역
+    _fixedForBase(base) {
+        const week = this.state.currentWeek;
+        let total = 0;
+        const parts = [];
+        this._step2Subjects().forEach(s => {
+            const sub = s.name;
+            if (this._baseOf(sub) !== base) return;
+            if (!this._isSpecialistManagedSubject(sub)) return;
+            const n = this._classCountsForSubject(week, sub).max;
+            if (n > 0) { total += n; parts.push(`${sub} ${n}`); }
+        });
+        return { total, parts };
+    },
+
     // 이 과목이 반별로 몇 차시씩 들어가 있는지 (반마다 다르면 uniform=false)
     _classCountsForSubject(week, sub) {
         const wData = this.state.history[week];
@@ -1978,37 +2038,40 @@ const App = {
         }).map(name => ({ name }));
     },
 
-    // 전담 과목의 차시는 1단계 시간표에서 실제로 센 값(자동), 나머지는 직접 입력한 값
+    // 1단계에서 고정된 과목은 자동 계산, 나머지는 직접 입력.
+    // 국(도)/체(강)/과(실) 같은 파생 과목은 국어/체육/과학에 합쳐서 보여준다.
     renderStep2() {
         const body = document.getElementById('step2-body');
         if (!body) return;
         const week = this.state.currentWeek;
         this.initWeekData(week);
         const wData = this.state.history[week];
-        const subjects = this._step2Subjects();
 
         let sum = 0;
-        let editable = '';
-        let fixed = '';
+        let cards = '';
 
-        subjects.forEach(s => {
-            const sub = s.name;
-            if (this._isSpecialistManagedSubject(sub)) {
-                // 1단계에서 자리가 정해진 과목 — 실제 배정된 차시를 그대로 보여줌(수정 불가)
-                const n = this._classCountsForSubject(week, sub).max;
-                wData.targets[sub] = n;
-                sum += n;
-                fixed += `<div class="s2-chip">
-                    <span class="s2-chip-name">${sub}</span>
-                    <span class="s2-chip-num">${n}</span>
+        this._step2BaseSubjects().forEach(sub => {
+            const fixed = this._fixedForBase(sub);
+            const allFixed = this._isSpecialistManagedSubject(sub);
+
+            if (allFixed) {
+                // 과목 자체가 전담 (영어·도덕) — 모양은 같고 색만 보라색, 값은 자동
+                wData.targets[sub] = fixed.total;
+                sum += fixed.total;
+                cards += `<div class="s2-item s2-item-fixed">
+                    <div class="s2-item-name">${sub}</div>
+                    <div class="s2-fixed-num">${fixed.total}</div>
+                    <div class="s2-fixed-tag">1단계 고정</div>
                 </div>`;
                 return;
             }
+
+            // 직접 입력 과목. 파생 전담(국(도) 등)이 있으면 그 차시가 이 과목에 포함됨을 알려준다
             const val = wData.targets[sub] || 0;
             sum += val;
             const cfg = (this.state.config.subjects || []).find(x => x.name === sub);
             const on = !!(cfg && cfg.blockSize > 1);
-            editable += `<div class="s2-item">
+            cards += `<div class="s2-item">
                 <div class="s2-item-name">${sub}</div>
                 <input type="number" min="0" class="s2-input" value="${val}" data-sub="${sub}">
                 <label class="s2-toggle${on ? ' on' : ''}" title="켜면 랜덤 배정 시 2차시를 붙여서 연달아 배정합니다.">
@@ -2016,6 +2079,7 @@ const App = {
                     <span class="s2-track"><span class="s2-knob"></span></span>
                     <span class="s2-toggle-label">연차시</span>
                 </label>
+                ${fixed.total ? `<div class="s2-inc">${fixed.parts.join(' · ')} 포함</div>` : ''}
             </div>`;
         });
 
@@ -2024,23 +2088,15 @@ const App = {
                 <div class="s2-panel-head">
                     <div>
                         <div class="s2-panel-title">이번 주 과목별 차시</div>
-                        <div class="s2-panel-desc">차시를 입력하고, 2차시를 붙여서 배정할 과목은 <b>연차시</b>를 켜세요.</div>
+                        <div class="s2-panel-desc">차시를 입력하고, 2차시를 붙여서 배정할 과목은 <b>연차시</b>를 켜세요.
+                            <span class="s2-legend">보라색은 1단계에서 자리를 정한 과목입니다.</span></div>
                     </div>
                     <div class="s2-total-box">
                         <div class="s2-total-label">이번 주 합계</div>
                         <div class="s2-total-num"><b class="s2-total">${sum}</b><span>차시</span></div>
                     </div>
                 </div>
-
-                <div class="s2-section">
-                    <div class="s2-section-label">직접 입력</div>
-                    <div class="s2-grid">${editable}</div>
-                </div>
-
-                ${fixed ? `<div class="s2-section">
-                    <div class="s2-section-label s2-section-label-fixed">1단계 고정 <span>· 1단계에서 정한 자리대로 자동 계산됩니다</span></div>
-                    <div class="s2-chips">${fixed}</div>
-                </div>` : ''}
+                <div class="s2-grid">${cards}</div>
             </div>`;
 
         body.querySelectorAll('.s2-input').forEach(inp => {
@@ -2069,7 +2125,7 @@ const App = {
     // 입력 중에 포커스가 날아가지 않도록 합계 숫자만 갱신
     _step2RefreshSum() {
         const wData = this.state.history[this.state.currentWeek];
-        const sum = this._step2Subjects().reduce((a, s) => a + (wData.targets[s.name] || 0), 0);
+        const sum = this._step2BaseSubjects().reduce((a, name) => a + (wData.targets[name] || 0), 0);
         const el = document.querySelector('#step2-body .s2-total');
         if (el) el.textContent = sum;
     },

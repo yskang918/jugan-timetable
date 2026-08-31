@@ -711,15 +711,7 @@ main.container { display: none !important; }
 .s2-total-num b { font-size: 2rem; font-weight: 800; color: #15803d; line-height: 1.1; }
 .s2-total-num span { font-size: 0.9rem; font-weight: 700; color: #15803d; }
 
-.s2-section { display: flex; flex-direction: column; gap: 10px; min-height: 0; }
-.s2-section-label {
-    font-size: 0.8rem; font-weight: 800; color: var(--text-sub);
-    letter-spacing: 0.02em;
-}
-.s2-section-label-fixed { color: #6d28d9; }
-.s2-section-label span { font-weight: 600; color: var(--text-sub); }
-
-/* 직접 입력 과목 카드 */
+/* 과목 카드 */
 .s2-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(178px, 1fr));
@@ -759,19 +751,27 @@ main.container { display: none !important; }
 .s2-toggle.on .s2-toggle-label { color: var(--primary-color); }
 .s2-toggle input:focus-visible + .s2-track { box-shadow: 0 0 0 3px rgba(22,163,74,0.25); }
 
-/* 1단계 고정 과목 — 읽기 전용이라 작은 칩으로 */
-.s2-chips { display: flex; flex-wrap: wrap; gap: 10px; }
-.s2-chip {
-    display: inline-flex; align-items: center; gap: 10px;
-    background: #f5f3ff; border: 1.5px solid #ddd6fe; border-radius: 12px;
-    padding: 9px 14px;
+/* 1단계에서 자리를 정한 과목 — 모양은 같고 색만 보라색, 값은 자동 계산 */
+.s2-item-fixed { background: #faf9ff; border-color: #ddd6fe; }
+.s2-item-fixed .s2-item-name { color: #5b21b6; }
+.s2-fixed-num {
+    width: 100%; text-align: center;
+    font-size: 1.25rem; font-weight: 800; color: #4f46e5;
+    padding: 7px 8px; background: #ede9fe;
+    border: 1.5px solid #ddd6fe; border-radius: 10px;
 }
-.s2-chip-name { font-size: 0.98rem; font-weight: 800; color: #5b21b6; }
-.s2-chip-num {
-    font-size: 1.1rem; font-weight: 800; color: #4f46e5;
-    background: #fff; border: 1.5px solid #ddd6fe; border-radius: 8px;
-    min-width: 38px; text-align: center; padding: 1px 8px;
+.s2-fixed-tag {
+    font-size: 0.78rem; font-weight: 700; color: #6d28d9;
+    display: flex; align-items: center; gap: 6px; min-height: 19px;
 }
+.s2-fixed-tag::before {
+    content: ''; width: 34px; height: 19px; border-radius: 20px;
+    background: #ddd6fe; flex-shrink: 0;
+}
+/* 파생 전담(국(도) 등)이 합산된 과목에 붙는 안내 */
+.s2-inc { font-size: 0.72rem; font-weight: 700; color: #6d28d9; }
+.s2-legend { display: block; margin-top: 2px; font-size: 0.8rem; color: #6d28d9; font-weight: 600; }
+
 .ts-body-plain .settings-page { max-width: 1600px; margin: 0 auto; padding-bottom: 40px; }
 
 /* 한 화면에 모든 반이 들어가도록: 세로로도 남는 높이를 행끼리 균등하게 나눠 갖고,
