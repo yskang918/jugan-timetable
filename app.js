@@ -948,10 +948,11 @@ const App = {
         // 설정은 전체화면 오버레이라 일반 섹션 전환과 별개로 처리한다.
         const settingsOverlay = document.getElementById('settings-overlay');
         if (menuId === 'settings') {
-            document.getElementById('tile-step-overlay')?.classList.add('hide');
-            settingsOverlay.classList.remove('hide');
-            this.renderSettingsView();
-            this.renderSpecialistView();
+            // 1단계 화면이 떠 있는 상태에서 눌렀다면 1단계로, 아니면 보고 있던 메뉴로 돌아간다.
+            const tileOpen = !document.getElementById('tile-step-overlay')?.classList.contains('hide');
+            this.openSettings(tileOpen || !currentMenu
+                ? { type: 'step', step: 1 }
+                : { type: 'menu', menuId: currentMenu });
             return;
         }
         settingsOverlay?.classList.add('hide');
@@ -1611,16 +1612,31 @@ const App = {
         document.getElementById('tile-step-overlay').classList.remove('hide');
         this.renderTileStep();
     },
-    openSettingsFromTileStep() {
+    // 설정을 어디서 열었는지 기억해뒀다가 '뒤로가기'로 그 화면에 그대로 돌려보낸다.
+    // 지금은 1단계뿐이지만, 2·3단계가 생기면 여기에 항목만 추가하면 된다.
+    _settingsReturn: { type: 'step', step: 1 },
+    openSettings(from) {
+        this._settingsReturn = from || { type: 'step', step: 1 };
         this.state.tileSel = null;
         document.getElementById('tile-step-overlay').classList.add('hide');
         document.getElementById('settings-overlay').classList.remove('hide');
         this.renderSettingsView();
         this.renderSpecialistView();
     },
+    openSettingsFromTileStep() {
+        this.openSettings({ type: 'step', step: 1 });
+    },
     closeSettingsOverlay() {
         document.getElementById('settings-overlay').classList.add('hide');
-        this.openTileStep();
+        const back = this._settingsReturn || { type: 'step', step: 1 };
+        if (back.type === 'menu') {
+            this.switchMenu(back.menuId);
+        } else if (back.step === 1) {
+            this.openTileStep();
+        } else {
+            // 2·3단계가 만들어지면 여기에서 해당 단계를 열어준다. 그전까지는 1단계로.
+            this.openTileStep();
+        }
     },
     // 2단계는 아직 없음 — 자리만 만들어둠
     tileStepNext() {
@@ -3214,9 +3230,12 @@ ${bodyRows.join('')}
         if (!sp) return;
         const sub = sp.subject || sp.name;
         if (!sub) { this.showToast('과목명을 먼저 입력하세요.'); return; }
-        if (sp.weeklyCount == null) { this.showToast('"주당 실제 사용" 횟수를 먼저 입력해주세요.'); return; }
+        // "주당 실제 사용"이 비어 있으면(=전체) 후보 칸을 전부 채우는 뜻이므로,
+        // 반별 후보 개수를 그대로 목표치로 삼는다.
+        const isAll = (sp.weeklyCount == null);
+        const desc = isAll ? '등록된 후보 칸 전부' : `반마다 <b>${sp.weeklyCount}회</b>`;
 
-        this.showConfirm('이번 주 정리', `<b>${sub}</b>을(를) 이번 주 시간표에서 반마다 <b>${sp.weeklyCount}회</b>에 맞춰 정리합니다.<br>많으면 지우고, 적으면 채웁니다.<br><br>계속하시겠습니까?`).then(r => {
+        this.showConfirm('이번 주 정리', `<b>${sub}</b>을(를) 이번 주 시간표에 ${desc}로 맞춰 정리합니다.<br>많으면 지우고, 적으면 채웁니다.<br><br>계속하시겠습니까?`).then(r => {
             if (!r) return;
             const week = this.state.currentWeek;
             const wData = this.state.history[week];
@@ -3252,14 +3271,27 @@ ${bodyRows.join('')}
                 const cStr = String(c), classData = wData.classes[cStr];
                 let filled = classCounts[cStr];
 
+                // 이 반이 이 과목으로 등록해둔 후보 칸 목록
+                const candidates = [];
+                this.days.forEach(d => {
+                    if (!sp.data[d]) return;
+                    for (let p = 0; p < this.state.config.periods[d]; p++) {
+                        if (!sp.data[d][p]) continue;
+                        const classes = String(sp.data[d][p]).split(/[,\s]+/).map(v => v.trim()).filter(Boolean);
+                        if (classes.includes(cStr)) candidates.push([d, p]);
+                    }
+                });
+                // "전체"면 이 반의 후보 개수만큼이 목표
+                const want = isAll ? candidates.length : sp.weeklyCount;
+
                 // 초과분 지우기 (요일 순서상 뒤에 있는 것부터)
-                if (filled > sp.weeklyCount) {
+                if (filled > want) {
                     let kept = 0;
                     for (const d of this.days) {
                         const arr = classData[d] || [];
                         for (let p = 0; p < arr.length; p++) {
                             if (arr[p] === sub && wData.specialistCells[cStr]?.[d]?.[p]) {
-                                if (kept < sp.weeklyCount) kept++;
+                                if (kept < want) kept++;
                                 else { unmark(cStr, d, p); usedSlots.delete(`${d}-${p}`); filled--; removed++; }
                             }
                         }
@@ -3267,20 +3299,14 @@ ${bodyRows.join('')}
                 }
 
                 // 부족분 채우기 (다른 반이 이미 쓰는 시간은 건너뜀)
-                if (filled < sp.weeklyCount) {
-                    const candidates = [];
-                    this.days.forEach(d => {
-                        if (!sp.data[d]) return;
-                        for (let p = 0; p < this.state.config.periods[d]; p++) {
-                            if (!sp.data[d][p]) continue;
-                            const classes = String(sp.data[d][p]).split(/[,\s]+/).map(v => v.trim()).filter(Boolean);
-                            if (classes.includes(cStr)) candidates.push([d, p]);
-                        }
-                    });
+                if (filled < want) {
                     for (const [d, p] of candidates) {
-                        if (filled >= sp.weeklyCount) break;
+                        if (filled >= want) break;
                         const key = `${d}-${p}`;
-                        if (usedSlots.has(key) || classData[d][p]) continue;
+                        if (usedSlots.has(key)) continue;
+                        // 전담은 고정 배정이므로 일반 과목 위에는 덮어쓴다.
+                        // 다만 다른 전담이 이미 잡아둔 칸은 건드리지 않는다.
+                        if (wData.specialistCells[cStr]?.[d]?.[p]) continue;
                         mark(cStr, d, p);
                         usedSlots.add(key);
                         filled++;
