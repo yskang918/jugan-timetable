@@ -1602,11 +1602,10 @@ const App = {
         document.getElementById('tile-step-overlay').classList.remove('hide');
         this.renderTileStep();
     },
-    closeTileStep() {
+    openSettingsFromTileStep() {
         this.state.tileSel = null;
         document.getElementById('tile-step-overlay').classList.add('hide');
-        // 반영된 변경사항을 일반 화면에도 즉시 보이게
-        this.renderTimetableLayout();
+        this.switchMenu('settings');
     },
     // 2단계는 아직 없음 — 자리만 만들어둠
     tileStepNext() {
