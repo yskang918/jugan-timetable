@@ -2197,8 +2197,8 @@ const App = {
             },
             {
                 sel: '.lib-new',
-                title: '새 주차 만들기',
-                text: '새로운 한 주를 시작할 때 누릅니다. 이름을 정할 수 있어서 <b>“9월 2주”</b>처럼 알아보기 쉽게 저장할 수 있어요.<br>새 주차에는 전담 시간표가 자동으로 채워집니다.'
+                title: '새 시간표 만들기',
+                text: '새로운 한 주를 시작할 때 누릅니다. 이름을 정할 수 있어서 <b>“9월 2주”</b>처럼 알아보기 쉽게 저장할 수 있어요.<br>새로 만든 시간표에는 전담 시간표가 자동으로 채워집니다.'
             },
             {
                 before: () => { hideAll('tile-step-overlay'); this.openTileStep(); },
@@ -2394,7 +2394,7 @@ const App = {
         }
         cards += `<button class="lib-card lib-new" onclick="App.libCreateWeek()">
             <span class="lib-new-plus">+</span>
-            <span class="lib-new-text">새 주차 만들기</span>
+            <span class="lib-new-text">새 시간표 만들기</span>
             <span class="lib-new-sub">이름을 정하고 시작합니다</span>
         </button>`;
 
@@ -2421,8 +2421,8 @@ const App = {
 
     async libCreateWeek() {
         const next = this.state.maxWeek + 1;
-        const name = await this.showPrompt('새 주차 만들기',
-            `새로 만들 주차의 이름을 정해주세요.<br><span style="color:#64748b;font-size:0.85rem;">비워두면 "${next}주차"로 저장됩니다.</span>`);
+        const name = await this.showPrompt('새 시간표 만들기',
+            `새로 만들 시간표의 이름을 정해주세요.<br><span style="color:#64748b;font-size:0.85rem;">비워두면 "${next}주차"로 저장됩니다.</span>`);
         if (name === null) return;   // 취소
         this.createNewWeek();
         const w = this.state.currentWeek;

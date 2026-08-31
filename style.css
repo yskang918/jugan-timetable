@@ -627,7 +627,7 @@ main.container { display: none !important; }
 .lib-mini:hover { background: #eef2f7; color: var(--text-main); }
 .lib-mini-del:hover { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
 
-/* 새 주차 만들기 카드 */
+/* 새 시간표 만들기 카드 */
 .lib-new {
     align-items: center; justify-content: center; text-align: center; gap: 4px;
     background: #fff; border: 2px dashed #cbd5e1; min-height: 168px;
