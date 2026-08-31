@@ -1819,12 +1819,14 @@ const App = {
         const css = `
             @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&display=swap');
             * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            html, body { height: 100%; }
+            /* body에 height:100%를 주면 인쇄 시 본문이 인쇄 가능 영역보다 커져
+               한 줄이 다음 장으로 밀린다. 페이지 높이는 .p3-page에서만 지정한다. */
             body { margin:0; font-family:'Noto Sans KR','Malgun Gothic',sans-serif; background:#fff; color:#111827; }
-            @page { size: A4 portrait; margin: 12mm 14mm; }
-            /* 페이지 높이를 꽉 채우고 줄마다 같은 높이를 나눠 가져,
-               반이 적어도 표가 납작해 보이지 않게 함 */
-            .p3-page { height: 273mm; display:flex; flex-direction:column; }
+            @page { size: A4 portrait; margin: 10mm 12mm; }
+            /* 페이지 높이를 꽉 채우되 절대 넘치지 않게 해서 A4 한 장으로 인쇄되도록 함.
+               (A4 297mm - 위아래 여백 20mm = 277mm 이지만, 브라우저 반올림으로
+                한 줄이 다음 장으로 밀리는 걸 막기 위해 여유를 둔다) */
+            .p3-page { height: 268mm; overflow: hidden; display:flex; flex-direction:column; }
             .p3-break { page-break-before: always; }
             .p3-title { flex:0 0 auto; text-align:center; font-size:15px; font-weight:800; letter-spacing:1px;
                         padding-bottom:8px; margin-bottom:10px; border-bottom:2px solid #1e293b; }
