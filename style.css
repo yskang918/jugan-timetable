@@ -481,6 +481,63 @@ td.duplicate-error { background-color: #fee2e2 !important; border: 2px solid #ef
     background: #f1f5f9;
 }
 #step2-overlay.hide { display: none !important; }
+/* 헤더 안내 문구 강조 */
+.ts-tip {
+    display: inline-block; margin-left: 6px;
+    color: #fde047; font-weight: 700;
+}
+
+/* 이번 주만 손으로 고정한 칸 — 전담 배정과 구분되게 점선 테두리 */
+.ts-tile-manual {
+    background: #fffbeb;
+    border-style: dashed; border-color: #f59e0b;
+}
+/* 3단계에서 고정된 칸 표시 */
+.ts-tile-fixed::after {
+    content: '🔒';
+    position: absolute; top: 1px; right: 3px;
+    font-size: 0.5rem; opacity: 0.55; pointer-events: none;
+}
+
+/* --- 3단계 --- */
+#step3-overlay {
+    position: fixed; inset: 0; z-index: 9998;
+    display: flex; flex-direction: column;
+    background: #f1f5f9;
+}
+#step3-overlay.hide { display: none !important; }
+/* 반마다 [시간표 + 상태창]이라 1단계보다 카드가 넓다.
+   .ts-body의 5열 설정을 확실히 덮도록 선택자를 겹쳐 쓴다. */
+.ts-body.s3-body { grid-template-columns: repeat(3, 1fr); }
+.s3-card { padding: 8px 10px; }
+.s3-title { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.s3-badge {
+    font-size: 0.62rem; font-weight: 800; border-radius: 20px; padding: 2px 8px;
+}
+.s3-badge-ok   { color: #15803d; background: #dcfce7; }
+.s3-badge-todo { color: #a16207; background: #fef9c3; }
+
+.s3-row { flex: 1; min-height: 0; display: flex; gap: 8px; }
+.s3-grid-wrap { flex: 1; min-width: 0; display: flex; }
+.s3-grid-wrap .ts-grid { flex: 1; }
+.s3-status {
+    width: 108px; flex-shrink: 0; min-height: 0;
+    display: flex; flex-direction: column; gap: 2px;
+    overflow-y: auto; padding-left: 8px; border-left: 1px solid var(--border-color);
+}
+.s3-srow {
+    display: flex; align-items: center; justify-content: space-between; gap: 4px;
+    font-size: 0.75rem; font-weight: 700; color: var(--text-sub);
+    padding: 2px 5px; border-radius: 5px;
+}
+.s3-srow b { font-variant-numeric: tabular-nums; }
+.s3-ok    { color: #15803d; background: #f0fdf4; }
+.s3-over  { color: #b91c1c; background: #fef2f2; }
+.s3-under { color: #a16207; background: #fefce8; }
+
+@media (max-width: 1500px) { .ts-body.s3-body { grid-template-columns: repeat(2, 1fr); overflow-y: auto; } }
+@media (max-width: 1000px) { .ts-body.s3-body { grid-template-columns: 1fr; } }
+
 /* --- 2단계 --- */
 /* 스크롤 없이 한 화면에 담고, 내용은 화면 가운데에 둔다 */
 .s2-body {

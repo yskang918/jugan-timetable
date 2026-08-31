@@ -419,17 +419,18 @@ const App = {
         document.getElementById('btn-print-guide').addEventListener('click', () => this.printWeeklyGuide());
         document.getElementById('btn-ppo-close').addEventListener('click', () => document.getElementById('print-preview-overlay').classList.add('hide'));
 
-        // 🗂️ 1단계 타일 보드
+        // 🗂️ 1단계·3단계 타일 보드 (같은 조작 방식이라 핸들러를 공유)
         // mousedown에서 처리하는 이유: click은 브라우저가 먼저 발생시키는 blur보다 늦게 오는데,
         // blur가 즉시 재렌더링을 일으키면 클릭 대상 타일이 DOM에서 떨어져나가 click이 못 잡힘.
         // mousedown 시점에 선점해서 편집 중이던 값을 먼저 커밋하고, 이어서 우리가 직접 처리한다.
-        const tsBody = document.getElementById('tile-step-body');
-        if (tsBody) {
-            tsBody.addEventListener('mousedown', (e) => {
+        const bindTileBoard = (bodyId, overlayId) => {
+            const el = document.getElementById(bodyId);
+            if (!el) return;
+            el.addEventListener('mousedown', (e) => {
                 if (e.target.closest('.ts-tile-input')) return; // 입력 중인 칸 자체를 누르는 건 그대로 둠
                 e.preventDefault();
 
-                const openInput = tsBody.querySelector('.ts-tile-input');
+                const openInput = el.querySelector('.ts-tile-input');
                 if (openInput) {
                     const wData = this.state.history[this.state.currentWeek];
                     wData.classes[openInput.dataset.cls][openInput.dataset.day][parseInt(openInput.dataset.idx)] = openInput.value.trim();
@@ -442,12 +443,12 @@ const App = {
                 if (!tile || tile.classList.contains('ts-tile-none')) {
                     this.state.tileSel = null;
                     this.saveData();
-                    this.renderTileStep();
+                    this._renderActiveStep();
                     return;
                 }
                 this.tileClick(tile.dataset.cls, tile.dataset.day, parseInt(tile.dataset.idx));
             });
-            tsBody.addEventListener('keydown', (e) => {
+            el.addEventListener('keydown', (e) => {
                 if (e.target.classList.contains('ts-tile-input') && e.key === 'Enter') {
                     this.tileInputCommit(e.target.dataset.cls, e.target.dataset.day, parseInt(e.target.dataset.idx), e.target.value);
                 }
@@ -455,20 +456,23 @@ const App = {
             // blur 이벤트에는 의존하지 않는다 — 화면을 다시 그리면서 포커스된 입력칸이 사라지면
             // 브라우저가 blur를 동기(또는 그 직후) 발생시키는데, 그걸 커밋 처리로 이어받으면
             // 방금 계산한 스왑 결과를 재진입으로 덮어써버린다(체(강) 두 칸 복제 버그의 원인이었음).
-            // 대신 tsBody 바깥을 mousedown할 때만 "지금 열려있는 입력칸"을 직접 찾아 커밋한다.
+            // 대신 바깥을 mousedown할 때만 "지금 열려있는 입력칸"을 직접 찾아 커밋한다.
             // capture 단계(=버블링으로 target까지 내려가기 전)에서 판정해야 한다.
-            // tsBody 자체의 mousedown 처리(버블 단계)가 먼저 실행되면 재렌더링으로 클릭 대상이
-            // DOM에서 이미 떨어져나간 뒤라 tsBody.contains(e.target)가 항상 false로 나와
+            // el 자체의 mousedown 처리(버블 단계)가 먼저 실행되면 재렌더링으로 클릭 대상이
+            // DOM에서 이미 떨어져나간 뒤라 el.contains(e.target)가 항상 false로 나와
             // "바깥 클릭"으로 잘못 판정되고, 방금 한 선택이 즉시 취소돼버린다.
             document.addEventListener('mousedown', (e) => {
-                if (document.getElementById('tile-step-overlay')?.classList.contains('hide')) return;
-                if (tsBody.contains(e.target)) return;
-                const openInput = tsBody.querySelector('.ts-tile-input');
+                if (document.getElementById(overlayId)?.classList.contains('hide')) return;
+                if (el.contains(e.target)) return;
+                const openInput = el.querySelector('.ts-tile-input');
                 if (openInput) {
                     this.tileInputCommit(openInput.dataset.cls, openInput.dataset.day, parseInt(openInput.dataset.idx), openInput.value);
                 }
             }, true);
-        }
+        };
+        bindTileBoard('tile-step-body', 'tile-step-overlay');
+        bindTileBoard('step3-body', 'step3-overlay');
+
         document.getElementById('btn-ppo-check').addEventListener('click', () => this.runFinalCheck());
         document.getElementById('btn-ppo-print').addEventListener('click', () => this.printPDF());
         document.getElementById('btn-ppo-download').addEventListener('click', () => this.downloadPDF());
@@ -1243,7 +1247,7 @@ const App = {
     // 과목명 첫 글자가 같으면 같은 계열(예: 체육/체(운)/체(강), 국어/국(도))로 보고 같은 날 중복 배정을 피함
     _subjectFamily(name) { return (name || '').charAt(0); },
 
-    executeRandomAssign(selected) {
+    executeRandomAssign(selected, opts = {}) {
         const weekData = this.state.history[this.state.currentWeek], targets = weekData.targets;
         for (let c = 1; c <= this.state.config.classCount; c++) {
             const cd = weekData.classes[c], cur = {}, pd = {}, famDays = {}; selected.forEach(s => { cur[s.name] = 0; pd[s.name] = []; });
@@ -1302,7 +1306,9 @@ const App = {
             blks.forEach(item => { const b = getBounds(item.pref); ass(item.name, item.size, b[0], b[1]); });
             sngs.forEach(item => { const b = getBounds(item.pref); ass(item.name, 1, b[0], b[1]); });
         }
-        this.saveData(); this.renderTimetableLayout(); this.showAlert('배정 완료', '선호 시간대와 과목 계열(같은 첫 글자) 중복을 피해서 전체 반 배정이 완료되었습니다.');
+        this.saveData();
+        if (opts.onDone) { opts.onDone(); return; }
+        this.renderTimetableLayout(); this.showAlert('배정 완료', '선호 시간대와 과목 계열(같은 첫 글자) 중복을 피해서 전체 반 배정이 완료되었습니다.');
     },
 
     /* --- 반별 랜덤 배정 설정 카드 --- */
@@ -1656,7 +1662,111 @@ const App = {
         this.openTileStep();
     },
     step2Next() {
-        this.showToast('3단계는 아직 준비 중입니다.');
+        document.getElementById('step2-overlay').classList.add('hide');
+        this.openStep3();
+    },
+
+    /* --- 3단계: 반별 시간표 배정 --- */
+    openStep3() {
+        this.state.tileSel = null;
+        document.getElementById('tile-step-overlay').classList.add('hide');
+        document.getElementById('step2-overlay').classList.add('hide');
+        document.getElementById('settings-overlay').classList.add('hide');
+        document.getElementById('step3-overlay').classList.remove('hide');
+        this.renderStep3();
+    },
+    step3Back() {
+        this.state.tileSel = null;
+        document.getElementById('step3-overlay').classList.add('hide');
+        this.openStep2();
+    },
+
+    // 한 반의 과목별 (배정 / 목표) 집계
+    _step3Status(cStr) {
+        const wData = this.state.history[this.state.currentWeek];
+        const cd = wData.classes[cStr] || {};
+        const placed = {};
+        this.days.forEach(d => (cd[d] || []).forEach(v => { if (v) placed[v] = (placed[v] || 0) + 1; }));
+        const rows = this._step2Subjects()
+            .map(s => s.name)
+            .filter(sub => (wData.targets[sub] || 0) > 0 || placed[sub])
+            .map(sub => ({ sub, got: placed[sub] || 0, want: wData.targets[sub] || 0 }));
+        const empty = this.days.reduce((a, d) => {
+            let n = 0;
+            for (let p = 0; p < this.state.config.periods[d]; p++) if (!(cd[d] || [])[p]) n++;
+            return a + n;
+        }, 0);
+        return { rows, empty };
+    },
+
+    renderStep3() {
+        const body = document.getElementById('step3-body');
+        if (!body) return;
+        const wData = this.state.history[this.state.currentWeek];
+        let h = '';
+        for (let c = 1; c <= this.state.config.classCount; c++) {
+            const cStr = String(c);
+            const st = this._step3Status(cStr);
+            const done = st.rows.every(r => r.got === r.want) && st.empty === 0;
+            const statusRows = st.rows.map(r => {
+                const cls = r.got === r.want ? 'ok' : (r.got > r.want ? 'over' : 'under');
+                return `<div class="s3-srow s3-${cls}"><span>${r.sub}</span><b>${r.got}/${r.want}</b></div>`;
+            }).join('');
+            h += `<div class="ts-class-card s3-card">
+                <div class="ts-class-title s3-title">
+                    ${c}반
+                    <span class="s3-badge ${done ? 's3-badge-ok' : 's3-badge-todo'}">${done ? '완료' : (st.empty ? `빈칸 ${st.empty}` : '차시 불일치')}</span>
+                </div>
+                <div class="s3-row">
+                    <div class="s3-grid-wrap">${this._tileGridHtml(cStr, false)}</div>
+                    <div class="s3-status">${statusRows || '<div class="s3-srow">-</div>'}</div>
+                </div>
+            </div>`;
+        }
+        body.innerHTML = h;
+        const input = body.querySelector('.ts-tile-input');
+        if (input) { input.focus(); input.select(); }
+    },
+
+    // 고정된 칸은 남기고 나머지만 비움
+    step3ClearUnfixed() {
+        this.showConfirm('비우기', '고정된 칸은 그대로 두고, 나머지 배정만 모두 지웁니다.<br><br>계속할까요?').then(r => {
+            if (!r) return;
+            const wData = this.state.history[this.state.currentWeek];
+            for (let c = 1; c <= this.state.config.classCount; c++) {
+                const cStr = String(c);
+                this.days.forEach(d => {
+                    const arr = wData.classes[cStr][d] || [];
+                    for (let p = 0; p < arr.length; p++) {
+                        if (!wData.specialistCells?.[cStr]?.[d]?.[p]) arr[p] = '';
+                    }
+                });
+            }
+            this.state.isDirty = true;
+            this.saveData();
+            this.renderStep3();
+            this.showToast('고정된 칸만 남기고 비웠습니다.');
+        });
+    },
+
+    // 2단계 차시를 목표로, 빈 칸에만 자동 배정 (고정 칸은 건드리지 않음)
+    step3AutoAssign() {
+        const wData = this.state.history[this.state.currentWeek];
+        const selected = this._step2Subjects()
+            .map(s => s.name)
+            .filter(sub => (wData.targets[sub] || 0) > 0 && !this._isSpecialistManagedSubject(sub))
+            .map(sub => {
+                const cfg = (this.state.config.subjects || []).find(x => x.name === sub);
+                return { name: sub, blockSize: cfg && cfg.blockSize > 1 ? cfg.blockSize : 1 };
+            });
+        if (selected.length === 0) {
+            this.showAlert('배정할 과목 없음', '2단계에서 과목별 차시를 먼저 입력해주세요.');
+            return;
+        }
+        this.executeRandomAssign(selected, { onDone: () => {
+            this.renderStep3();
+            this.showToast('✅ 자동 배정 완료 — 반별 상태창에서 확인하세요.');
+        }});
     },
 
     // 이 과목이 반별로 몇 차시씩 들어가 있는지 (반마다 다르면 uniform=false)
@@ -1787,50 +1897,62 @@ const App = {
         if (el) el.textContent = sum;
     },
 
-    renderTileStep() {
-        const body = document.getElementById('tile-step-body');
-        if (!body) return;
+    // 한 반의 타일 격자 HTML.
+    // onlyFixed=true  : 1단계 — 고정된 칸만 보여줌
+    // onlyFixed=false : 3단계 — 모든 과목을 보여주고, 고정 칸은 자물쇠 표시
+    _tileGridHtml(cStr, onlyFixed) {
         const wData = this.state.history[this.state.currentWeek];
         const maxP = Math.max(...Object.values(this.state.config.periods));
         const sel = this.state.tileSel;
+        if (!wData.classes[cStr]) wData.classes[cStr] = { "월": [], "화": [], "수": [], "목": [], "금": [] };
+        const data = wData.classes[cStr];
 
+        let h = `<div class="ts-grid"><div></div>${this.days.map(d => `<div class="ts-head">${d}</div>`).join('')}`;
+        for (let p = 0; p < maxP; p++) {
+            h += `<div class="ts-period-label">${p + 1}</div>`;
+            this.days.forEach(d => {
+                if (p >= this.state.config.periods[d]) { h += `<div class="ts-tile ts-tile-none"></div>`; return; }
+                const isLocked = !!(wData.specialistCells?.[cStr]?.[d]?.[p]);
+                const val = (onlyFixed && !isLocked) ? '' : (data[d][p] || '');
+                const isSel = !!(sel && sel.cls === cStr && sel.day === d && sel.p === p);
+                // 색은 "지금 이 칸에 있는 과목 이름"을 기준으로 정함 (스왑해도 색이 자리가 아니라 과목을 따라가게)
+                const sp = val ? this._spByName(val) : null;
+                const bg = (!isSel && sp && sp.bg) ? ` style="background-color:${sp.bg};"` : '';
+                // 전담 보드에 없는데 잠겨 있으면 = 이번 주만 손으로 고정한 칸
+                const manual = isLocked && val && !sp;
+                const cls = `ts-tile${!val ? ' ts-tile-empty' : ''}${isSel ? ' ts-tile-selected' : ''}` +
+                            `${manual ? ' ts-tile-manual' : ''}${(!onlyFixed && isLocked) ? ' ts-tile-fixed' : ''}`;
+
+                if (isSel) {
+                    h += `<div class="${cls}" data-cls="${cStr}" data-day="${d}" data-idx="${p}">
+                        <input type="text" class="ts-tile-input" value="${val}" data-cls="${cStr}" data-day="${d}" data-idx="${p}">
+                        ${val ? `<div class="ts-tile-x" data-cls="${cStr}" data-day="${d}" data-idx="${p}">✕</div>` : ''}
+                    </div>`;
+                } else {
+                    h += `<div class="${cls}"${bg} data-cls="${cStr}" data-day="${d}" data-idx="${p}"><span class="ts-tile-label">${val}</span></div>`;
+                }
+            });
+        }
+        return h + `</div>`;
+    },
+
+    renderTileStep() {
+        const body = document.getElementById('tile-step-body');
+        if (!body) return;
         let h = '';
         for (let c = 1; c <= this.state.config.classCount; c++) {
-            const cStr = String(c);
-            if (!wData.classes[cStr]) wData.classes[cStr] = { "월": [], "화": [], "수": [], "목": [], "금": [] };
-            const data = wData.classes[cStr];
-
-            h += `<div class="ts-class-card"><div class="ts-class-title">${c}반</div><div class="ts-grid">`;
-            h += `<div></div>${this.days.map(d => `<div class="ts-head">${d}</div>`).join('')}`;
-            for (let p = 0; p < maxP; p++) {
-                h += `<div class="ts-period-label">${p + 1}</div>`;
-                this.days.forEach(d => {
-                    if (p >= this.state.config.periods[d]) { h += `<div class="ts-tile ts-tile-none"></div>`; return; }
-                    // 1단계는 전담 고정 배정만 다루는 단계 — 전담 잠금이 안 된 칸(일반 과목 등)은 화면에 보이지 않게 숨긴다.
-                    const isLocked = !!(wData.specialistCells?.[cStr]?.[d]?.[p]);
-                    const val = isLocked ? (data[d][p] || '') : '';
-                    const isSel = !!(sel && sel.cls === cStr && sel.day === d && sel.p === p);
-                    // 색은 "지금 이 칸에 있는 과목 이름"을 기준으로 정함 (스왑해도 색이 자리가 아니라 과목을 따라가게)
-                    const sp = val ? this._spByName(val) : null;
-                    const bg = (!isSel && sp && sp.bg) ? ` style="background-color:${sp.bg};"` : '';
-                    const cls = `ts-tile${!val ? ' ts-tile-empty' : ''}${isSel ? ' ts-tile-selected' : ''}`;
-
-                    if (isSel) {
-                        h += `<div class="${cls}" data-cls="${cStr}" data-day="${d}" data-idx="${p}">
-                            <input type="text" class="ts-tile-input" value="${val}" data-cls="${cStr}" data-day="${d}" data-idx="${p}">
-                            ${val ? `<div class="ts-tile-x" data-cls="${cStr}" data-day="${d}" data-idx="${p}">✕</div>` : ''}
-                        </div>`;
-                    } else {
-                        h += `<div class="${cls}"${bg} data-cls="${cStr}" data-day="${d}" data-idx="${p}"><span class="ts-tile-label">${val}</span></div>`;
-                    }
-                });
-            }
-            h += `</div></div>`;
+            h += `<div class="ts-class-card"><div class="ts-class-title">${c}반</div>${this._tileGridHtml(String(c), true)}</div>`;
         }
         body.innerHTML = h;
-
         const input = body.querySelector('.ts-tile-input');
         if (input) { input.focus(); input.select(); }
+    },
+
+    // 지금 열려 있는 단계 화면을 다시 그린다 (1단계/3단계 공용 타일 조작용)
+    _renderActiveStep() {
+        const s3 = document.getElementById('step3-overlay');
+        if (s3 && !s3.classList.contains('hide')) this.renderStep3();
+        else this.renderTileStep();
     },
 
     // 타일 클릭: 아무것도 선택 안 된 상태 → 이 칸을 선택(분홍+흔들림)
@@ -1853,7 +1975,7 @@ const App = {
             this.state.isDirty = true;
             this.saveData();
         }
-        this.renderTileStep();
+        this._renderActiveStep();
     },
 
     // 두 칸을 맞바꿀 때 "전담 잠금" 표시도 같이 따라가게 함
@@ -1884,7 +2006,7 @@ const App = {
         this.state.isDirty = true;
         this._syncSpecialistTargets(this.state.currentWeek); // 2단계 차시에 즉시 반영
         this.saveData();
-        this.renderTileStep();
+        this._renderActiveStep();
     },
 
     tileInputCommit(cStr, d, p, val) {
@@ -1905,7 +2027,7 @@ const App = {
         this.state.isDirty = true;
         this._syncSpecialistTargets(this.state.currentWeek); // 2단계 차시에 즉시 반영
         this.saveData();
-        this.renderTileStep();
+        this._renderActiveStep();
     },
 
     /* --- Validation --- */
