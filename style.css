@@ -482,28 +482,13 @@ td.duplicate-error { background-color: #fee2e2 !important; border: 2px solid #ef
     background: #f1f5f9;
 }
 #step2-overlay.hide { display: none !important; }
-/* 단계 화면 헤더의 주차 표시 · 이동 · 새 주차 */
-.ts-weekbar {
-    display: flex; align-items: center; gap: 5px; flex-shrink: 0;
-    background: #0f172a; border: 1px solid #334155; border-radius: 10px;
-    padding: 4px 6px 4px 4px;
+/* 단계 화면 헤더의 '시간표 저장소' 버튼 */
+.ts-lib-btn {
+    padding: 8px 14px; border-radius: 10px; border: 1.5px solid #475569;
+    background: transparent; color: #cbd5e1; font-size: 0.82rem; font-weight: 700;
+    cursor: pointer; white-space: nowrap; transition: var(--transition);
 }
-.ts-wk-btn {
-    width: 22px; height: 22px; border-radius: 6px; border: none;
-    background: #334155; color: #e2e8f0; font-size: 0.78rem; font-weight: 800;
-    cursor: pointer; line-height: 1;
-}
-.ts-wk-btn:hover { background: #475569; }
-.ts-wk-label {
-    font-size: 0.78rem; font-weight: 800; color: #f8fafc;
-    white-space: nowrap; padding: 0 4px;
-}
-.ts-wk-new {
-    border: 1px solid #475569; background: transparent; color: #cbd5e1;
-    font-size: 0.72rem; font-weight: 700; border-radius: 7px;
-    padding: 3px 8px; cursor: pointer; white-space: nowrap;
-}
-.ts-wk-new:hover { background: #334155; color: #fff; }
+.ts-lib-btn:hover { background: #334155; color: #fff; }
 .ts-save {
     font-size: 0.7rem; font-weight: 700; color: #4ade80;
     white-space: nowrap; min-width: 52px;
@@ -526,6 +511,78 @@ td.duplicate-error { background-color: #fee2e2 !important; border: 2px solid #ef
     position: absolute; top: 1px; right: 3px;
     font-size: 0.5rem; opacity: 0.55; pointer-events: none;
 }
+
+/* --- 시간표 저장소 (첫 화면) --- */
+#library-overlay {
+    position: fixed; inset: 0; z-index: 9998;
+    display: flex; flex-direction: column;
+    background: #f1f5f9;
+}
+#library-overlay.hide { display: none !important; }
+.lib-body { flex: 1; min-height: 0; overflow-y: auto; padding: 32px 24px 48px; }
+.lib-wrap { max-width: 1180px; margin: 0 auto; }
+.lib-head { margin-bottom: 20px; }
+.lib-h1 { font-size: 1.5rem; font-weight: 800; color: var(--text-main); }
+.lib-h2 { font-size: 0.88rem; color: var(--text-sub); margin-top: 5px; }
+
+.lib-grid {
+    display: grid; gap: 16px;
+    grid-template-columns: repeat(auto-fill, minmax(232px, 1fr));
+}
+
+.lib-card {
+    position: relative; text-align: left;
+    background: #fff; border: 1.5px solid var(--border-color); border-radius: 16px;
+    padding: 16px 18px 14px; cursor: pointer;
+    display: flex; flex-direction: column; gap: 9px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    transition: transform 0.14s ease, box-shadow 0.14s ease, border-color 0.14s ease;
+}
+.lib-card:hover {
+    transform: translateY(-3px);
+    border-color: var(--primary-color);
+    box-shadow: 0 10px 22px -8px rgba(22,163,74,0.35);
+}
+.lib-card-now { border-color: var(--primary-color); background: #f6fefa; }
+
+.lib-card-top { display: flex; align-items: center; justify-content: space-between; }
+.lib-num {
+    width: 32px; height: 32px; border-radius: 10px;
+    background: #1e293b; color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.95rem; font-weight: 800;
+}
+.lib-state { font-size: 0.68rem; font-weight: 800; border-radius: 20px; padding: 3px 9px; }
+.lib-done { color: #15803d; background: #dcfce7; }
+.lib-todo { color: #a16207; background: #fef9c3; }
+
+.lib-name {
+    font-size: 1.06rem; font-weight: 800; color: var(--text-main);
+    word-break: keep-all; line-height: 1.25;
+}
+.lib-bar { height: 6px; border-radius: 20px; background: #e2e8f0; overflow: hidden; }
+.lib-bar span { display: block; height: 100%; background: var(--primary-color); border-radius: 20px; }
+.lib-meta { font-size: 0.76rem; font-weight: 600; color: var(--text-sub); }
+
+.lib-actions { display: flex; gap: 6px; margin-top: 2px; }
+.lib-mini {
+    flex: 1; border: 1px solid var(--border-color); background: #f8fafc;
+    color: var(--text-sub); font-size: 0.72rem; font-weight: 700;
+    border-radius: 8px; padding: 5px 6px; cursor: pointer;
+}
+.lib-mini:hover { background: #eef2f7; color: var(--text-main); }
+.lib-mini-del:hover { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
+
+/* 새 주차 만들기 카드 */
+.lib-new {
+    align-items: center; justify-content: center; text-align: center; gap: 4px;
+    background: #fff; border: 2px dashed #cbd5e1; min-height: 168px;
+    font-family: inherit;
+}
+.lib-new:hover { border-color: var(--primary-color); background: #f6fefa; }
+.lib-new-plus { font-size: 1.9rem; font-weight: 300; color: var(--primary-color); line-height: 1; }
+.lib-new-text { font-size: 0.98rem; font-weight: 800; color: var(--text-main); }
+.lib-new-sub { font-size: 0.75rem; color: var(--text-sub); }
 
 /* --- 3단계 --- */
 #step3-overlay {

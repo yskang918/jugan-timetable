@@ -27,10 +27,10 @@ document.addEventListener('DOMContentLoaded', function () {
             this._setServerBtns(true);
             this.updateNavForRole();
             if (fromInit) this.loadFromServer().then(() => {
-                // 저장된 주차 중 가장 마지막 주차부터 이어서 작업하도록 연다
+                // 첫 화면은 시간표 저장소 — 지금까지 만든 주차를 고르거나 새로 만든다
                 if (this.state.maxWeek > 0) this.state.currentWeek = this.state.maxWeek;
                 this.initWeekData(this.state.currentWeek);
-                this.openTileStep();
+                this.openLibrary();
             });
         };
     } catch (e) {}

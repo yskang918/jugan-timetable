@@ -108,7 +108,7 @@ const App = {
         const setSave = (txt) => {
             const ind = document.getElementById('autosave-indicator');
             if (ind) ind.textContent = txt;
-            [1, 2, 3].forEach(n => {
+            [0, 1, 2, 3].forEach(n => {
                 const el = document.getElementById(`ts-save-${n}`);
                 if (el) el.textContent = txt;
             });
@@ -1622,7 +1622,6 @@ const App = {
         this.state.tileSel = null;
         document.getElementById('tile-step-overlay').classList.remove('hide');
         this.renderTileStep();
-        this._syncStepWeekBar();
     },
     // 설정을 어디서 열었는지 기억해뒀다가 '뒤로가기'로 그 화면에 그대로 돌려보낸다.
     // 지금은 1단계뿐이지만, 2·3단계가 생기면 여기에 항목만 추가하면 된다.
@@ -1641,7 +1640,9 @@ const App = {
     closeSettingsOverlay() {
         document.getElementById('settings-overlay').classList.add('hide');
         const back = this._settingsReturn || { type: 'step', step: 1 };
-        if (back.type === 'menu') {
+        if (back.type === 'library') {
+            this.openLibrary();
+        } else if (back.type === 'menu') {
             this.switchMenu(back.menuId);
         } else if (back.step === 2) {
             this.openStep2();
@@ -1662,7 +1663,6 @@ const App = {
         // 1단계에서 전담 배정을 고쳤을 수 있으므로 들어올 때마다 다시 계산
         this._syncSpecialistTargets(this.state.currentWeek);
         this.renderStep2();
-        this._syncStepWeekBar();
     },
     step2Back() {
         document.getElementById('step2-overlay').classList.add('hide');
@@ -1681,7 +1681,6 @@ const App = {
         document.getElementById('settings-overlay').classList.add('hide');
         document.getElementById('step3-overlay').classList.remove('hide');
         this.renderStep3();
-        this._syncStepWeekBar();
     },
     step3Back() {
         this.state.tileSel = null;
@@ -2124,48 +2123,134 @@ const App = {
         if (input) { input.focus(); input.select(); }
     },
 
-    /* --- 단계 화면 공통: 주차 표시 · 이동 · 새 주차 --- */
-    // 모든 단계 헤더의 주차 라벨을 현재 주차로 맞춤
-    _syncStepWeekBar() {
-        [1, 2, 3].forEach(n => {
-            const el = document.getElementById(`ts-week-label-${n}`);
-            if (el) el.textContent = `${this.state.currentWeek}주차 / 전체 ${this.state.maxWeek}주`;
-        });
+    /* --- 시간표 저장소 (첫 화면) --- */
+
+    // 주차 이름 (없으면 "N주차")
+    _weekName(w) {
+        return (this.state.history[w] && this.state.history[w].name) || `${w}주차`;
     },
-    stepChangeWeek(step) {
-        const nw = this.state.currentWeek + step;
-        if (nw < 1 || nw > this.state.maxWeek) {
-            this.showToast(step > 0 ? '마지막 주차입니다. "+ 새 주차"로 만들어주세요.' : '첫 주차입니다.');
+
+    // 그 주차가 얼마나 채워졌는지 요약
+    _weekSummary(w) {
+        const wData = this.state.history[w];
+        const cc = this.state.config.classCount;
+        if (!wData) return { total: 0, filled: 0, empty: 0, pct: 0 };
+        let total = 0, filled = 0;
+        for (let c = 1; c <= cc; c++) {
+            const cd = wData.classes?.[String(c)] || {};
+            this.days.forEach(d => {
+                for (let p = 0; p < this.state.config.periods[d]; p++) {
+                    total++;
+                    if ((cd[d] || [])[p]) filled++;
+                }
+            });
+        }
+        return { total, filled, empty: total - filled, pct: total ? Math.round(filled / total * 100) : 0 };
+    },
+
+    openLibrary() {
+        this.state.tileSel = null;
+        ['tile-step-overlay', 'step2-overlay', 'step3-overlay', 'settings-overlay']
+            .forEach(id => document.getElementById(id)?.classList.add('hide'));
+        document.getElementById('library-overlay').classList.remove('hide');
+        this.renderLibrary();
+    },
+
+    renderLibrary() {
+        const body = document.getElementById('library-body');
+        if (!body) return;
+        let cards = '';
+        for (let w = 1; w <= this.state.maxWeek; w++) {
+            const s = this._weekSummary(w);
+            const done = s.total > 0 && s.empty === 0;
+            const isNow = w === this.state.currentWeek;
+            cards += `<div class="lib-card${isNow ? ' lib-card-now' : ''}" onclick="App.libOpenWeek(${w})" title="${this._weekName(w)} 이어서 편집">
+                <div class="lib-card-top">
+                    <span class="lib-num">${w}</span>
+                    <span class="lib-state ${done ? 'lib-done' : 'lib-todo'}">${done ? '완성' : `${s.empty}칸 남음`}</span>
+                </div>
+                <div class="lib-name">${this._weekName(w)}</div>
+                <div class="lib-bar"><span style="width:${s.pct}%"></span></div>
+                <div class="lib-meta">${s.filled} / ${s.total}칸 · ${s.pct}%</div>
+                <div class="lib-actions">
+                    <button class="lib-mini" onclick="event.stopPropagation(); App.libRenameWeek(${w})">이름 변경</button>
+                    <button class="lib-mini lib-mini-del" onclick="event.stopPropagation(); App.libDeleteWeek(${w})">삭제</button>
+                </div>
+            </div>`;
+        }
+        cards += `<button class="lib-card lib-new" onclick="App.libCreateWeek()">
+            <span class="lib-new-plus">+</span>
+            <span class="lib-new-text">새 주차 만들기</span>
+            <span class="lib-new-sub">이름을 정하고 시작합니다</span>
+        </button>`;
+
+        body.innerHTML = `<div class="lib-wrap">
+            <div class="lib-head">
+                <div>
+                    <div class="lib-h1">주차 시간표</div>
+                    <div class="lib-h2">전체 ${this.state.maxWeek}개 · 카드를 누르면 1단계부터 이어서 편집합니다.</div>
+                </div>
+            </div>
+            <div class="lib-grid">${cards}</div>
+        </div>`;
+    },
+
+    libOpenWeek(w) {
+        if (w < 1 || w > this.state.maxWeek) return;
+        this.state.currentWeek = w;
+        this.state.tileSel = null;
+        this.initWeekData(w);
+        this.saveData();
+        document.getElementById('library-overlay').classList.add('hide');
+        this.openTileStep();
+    },
+
+    async libCreateWeek() {
+        const next = this.state.maxWeek + 1;
+        const name = await this.showPrompt('새 주차 만들기',
+            `새로 만들 주차의 이름을 정해주세요.<br><span style="color:#64748b;font-size:0.85rem;">비워두면 "${next}주차"로 저장됩니다.</span>`);
+        if (name === null) return;   // 취소
+        this.createNewWeek();
+        const w = this.state.currentWeek;
+        this.state.history[w].name = String(name).trim() || `${w}주차`;
+        this.saveData();
+        this.state.tileSel = null;
+        document.getElementById('library-overlay').classList.add('hide');
+        this.openTileStep();
+        this.showToast(`✅ "${this._weekName(w)}"을(를) 만들었습니다.`);
+    },
+
+    async libRenameWeek(w) {
+        const name = await this.showPrompt('이름 변경', `${this._weekName(w)}의 새 이름을 입력하세요.`);
+        if (name === null) return;
+        this.state.history[w].name = String(name).trim() || `${w}주차`;
+        this.saveData();
+        this.renderLibrary();
+    },
+
+    libDeleteWeek(w) {
+        if (this.state.maxWeek <= 1) {
+            this.showAlert('삭제할 수 없음', '주차가 하나뿐이라 삭제할 수 없습니다.');
             return;
         }
-        this.state.currentWeek = nw;
-        this.state.tileSel = null;
-        this.saveData();
-        this._refreshOpenStep();
-    },
-    stepCreateWeek() {
-        this.showConfirm('새 주차 만들기',
-            `${this.state.maxWeek + 1}주차를 새로 만듭니다.<br>전담 시간표는 자동으로 채워지고, 지금까지 만든 주차는 그대로 보관됩니다.<br><br>계속할까요?`
+        this.showConfirm('주차 삭제',
+            `<b>${this._weekName(w)}</b>을(를) 삭제합니다.<br>이 주차의 시간표는 되돌릴 수 없습니다.<br><br>정말 삭제할까요?`
         ).then(r => {
             if (!r) return;
-            this.createNewWeek();
-            this.state.tileSel = null;
-            // 새 주차는 1단계부터 다시 시작
-            document.getElementById('step2-overlay')?.classList.add('hide');
-            document.getElementById('step3-overlay')?.classList.add('hide');
-            this.openTileStep();
-            this.showToast(`✅ ${this.state.currentWeek}주차를 만들었습니다.`);
+            // 남은 주차를 1..N으로 다시 번호를 매긴다
+            const kept = [];
+            for (let i = 1; i <= this.state.maxWeek; i++) {
+                if (i !== w) kept.push(this.state.history[i]);
+            }
+            const next = {};
+            kept.forEach((data, i) => { next[i + 1] = data; });
+            this.state.history = next;
+            this.state.maxWeek = kept.length;
+            if (this.state.currentWeek > this.state.maxWeek) this.state.currentWeek = this.state.maxWeek;
+            this.saveData();
+            this.renderLibrary();
+            this.showToast('삭제했습니다.');
         });
-    },
-    // 지금 열려 있는 단계 화면만 다시 그림 (주차 이동 후 사용)
-    _refreshOpenStep() {
-        const s2 = document.getElementById('step2-overlay');
-        const s3 = document.getElementById('step3-overlay');
-        this.initWeekData(this.state.currentWeek);
-        if (s3 && !s3.classList.contains('hide')) this.renderStep3();
-        else if (s2 && !s2.classList.contains('hide')) { this._syncSpecialistTargets(this.state.currentWeek); this.renderStep2(); }
-        else this.renderTileStep();
-        this._syncStepWeekBar();
     },
 
     // 지금 열려 있는 단계 화면을 다시 그린다 (1단계/3단계 공용 타일 조작용)
