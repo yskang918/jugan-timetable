@@ -1694,9 +1694,9 @@ const App = {
     },
     step2Next() {
         document.getElementById('step2-overlay').classList.add('hide');
+        // 여기서 자동으로 배정하지 않는다 — 고정 과목만 보이는 상태로 두고,
+        // 3단계의 '과목 배정' 버튼을 눌렀을 때만 나머지 과목을 채운다.
         this.openStep3();
-        // 고정 시간표는 그대로 두고 나머지 과목을 자동으로 배정
-        this._step3FillEmpty();
     },
 
     /* --- 3단계: 반별 시간표 배정 --- */
@@ -1775,17 +1775,7 @@ const App = {
             });
     },
 
-    // 2단계에서 넘어올 때: 고정 칸은 그대로 두고 빈 칸만 자동으로 채운다
-    _step3FillEmpty() {
-        const selected = this._step3Selected();
-        if (selected.length === 0) return;
-        this.executeRandomAssign(selected, { onDone: () => {
-            this.renderStep3();
-            this.showToast('✅ 빈 칸을 자동으로 배정했습니다.');
-        }});
-    },
-
-    // 고정된 칸은 그대로 두고 나머지를 지운 뒤 2단계 차시에 맞춰 다시 배정
+    // 고정된 칸은 그대로 두고 나머지를 지운 뒤 2단계 차시에 맞춰 배정
     step3Reassign() {
         const wData = this.state.history[this.state.currentWeek];
         const selected = this._step3Selected();
@@ -1793,7 +1783,7 @@ const App = {
             this.showAlert('배정할 과목 없음', '2단계에서 과목별 차시를 먼저 입력해주세요.');
             return;
         }
-        this.showConfirm('다시 배정', '고정된 칸(자물쇠)은 그대로 두고,<br>나머지 배정을 지운 뒤 2단계 차시에 맞춰 다시 배정합니다.<br><br>계속할까요?').then(r => {
+        this.showConfirm('과목 배정', '고정된 칸(자물쇠)은 그대로 두고,<br>나머지 칸을 2단계에서 정한 차시에 맞춰 배정합니다.<br>이미 배정된 내용이 있으면 지우고 다시 배정합니다.<br><br>계속할까요?').then(r => {
             if (!r) return;
             // 1) 고정되지 않은 칸 비우기
             for (let c = 1; c <= this.state.config.classCount; c++) {
@@ -1805,11 +1795,11 @@ const App = {
                     }
                 });
             }
-            // 2) 빈 칸에 다시 배정
+            // 2) 빈 칸에 배정
             this.state.isDirty = true;
             this.executeRandomAssign(selected, { onDone: () => {
                 this.renderStep3();
-                this.showToast('✅ 다시 배정했습니다 — 반별 상태창에서 확인하세요.');
+                this.showToast('✅ 과목을 배정했습니다 — 반별 상태창에서 확인하세요.');
             }});
         });
     },
@@ -2252,7 +2242,7 @@ const App = {
                 before: () => { hideAll('step3-overlay'); this.openStep3(); },
                 sel: '#step3-body .s3-card',
                 title: '④ 3단계 — 반별 시간표 배정',
-                text: '1단계의 고정 칸(🔒)은 그대로 두고, 나머지 칸을 2단계 차시에 맞춰 채웁니다.<br>여기서는 과목을 눌러 <b>자리만 서로 바꿀 수 있습니다</b>(차시 수가 틀어지지 않도록).'
+                text: '처음 들어오면 1단계에서 고정한 칸(🔒)만 채워져 있고 나머지는 비어 있습니다.<br>여기서는 과목을 눌러 <b>자리만 서로 바꿀 수 있습니다</b>(차시 수가 틀어지지 않도록).'
             },
             {
                 sel: '#step3-body .s3-status',
@@ -2261,8 +2251,8 @@ const App = {
             },
             {
                 sel: '#step3-overlay .ts-next-btn',
-                title: '다시 배정',
-                text: '마음에 안 들면 언제든 누르세요.<br>고정된 칸은 그대로 두고 나머지만 지운 뒤 새로 배정합니다.'
+                title: '과목 배정',
+                text: '3단계에 들어오면 <b>고정된 칸만</b> 채워져 있고 나머지는 비어 있습니다.<br>이 버튼을 눌러야 2단계에서 정한 차시대로 나머지 과목이 배정됩니다.<br>결과가 마음에 안 들면 다시 눌러 새로 배정할 수 있어요.'
             },
             {
                 sel: '#step3-overlay .ts-old-view-btn',

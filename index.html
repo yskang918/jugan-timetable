@@ -7,7 +7,7 @@
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#f8fafc">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=20260831y">
+    <link rel="stylesheet" href="style.css?v=20260831z">
 </head>
 <body>
     <div id="app">
@@ -400,7 +400,7 @@
     <div id="step3-overlay" class="hide">
         <div class="ts-header">
             <div class="ts-title">3단계 — 반별 시간표 배정</div>
-            <div class="ts-header-sub">고정된 칸(자물쇠)은 그대로 두고 빈 칸을 2단계 차시에 맞춰 채웁니다.
+            <div class="ts-header-sub">고정된 칸(자물쇠)만 채워져 있습니다. <b>과목 배정</b>을 눌러 나머지를 채우세요.
                 <b class="ts-tip">과목을 누르고 다른 칸을 누르면 자리가 서로 바뀝니다.</b>
             </div>
             <button class="ts-lib-btn" onclick="App.openLibrary()" title="지금까지 만든 시간표를 봅니다">🗂️ 시간표 저장소</button>
@@ -409,7 +409,7 @@
             <button class="ts-old-view-btn" onclick="App.step3SavePdf()" title="A4 한 장짜리 PDF 파일로 저장합니다">📄 PDF 저장</button>
             <button class="ts-old-view-btn" onclick="App.step3SaveImage()" title="PNG 이미지 파일로 저장합니다">🖼️ 이미지 저장</button>
             <button class="ts-old-view-btn" onclick="App.step3Print()" title="A4 용지에 가로 2반씩 인쇄합니다">🖨️ 인쇄</button>
-            <button class="ts-next-btn" onclick="App.step3Reassign()" title="고정된 칸은 그대로 두고 나머지를 다시 배정합니다">🎲 다시 배정</button>
+            <button class="ts-next-btn" onclick="App.step3Reassign()" title="고정된 칸은 그대로 두고 나머지 과목을 2단계 차시대로 배정합니다">🎲 과목 배정</button>
         </div>
         <div id="step3-body" class="ts-body s3-body"></div>
     </div>
@@ -443,13 +443,13 @@
     <!-- Firebase SDK (서버 모드에서 사용) -->
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-    <script src="firebase-init.js?v=20260831y"></script>
+    <script src="firebase-init.js?v=20260831z"></script>
     <!-- 데이터 레이어 & 모드 설정 (app.js보다 먼저 로드) -->
-    <script src="db.js?v=20260831y"></script>
-    <script src="mode.js?v=20260831y"></script>
+    <script src="db.js?v=20260831z"></script>
+    <script src="mode.js?v=20260831z"></script>
     <!-- 앱 메인 (원본 그대로 사용) -->
     <!-- ?v= 값은 배포할 때마다 바꿔야 함 — GitHub Pages 캐시 때문에 안 바꾸면 새로고침해도 옛날 버전이 뜸 -->
-    <script src="app.js?v=20260831y"></script>
+    <script src="app.js?v=20260831z"></script>
     <!-- 모드별 UI 반영은 mode.js의 window.load 핸들러에서 처리 -->
 </body>
 </html>
