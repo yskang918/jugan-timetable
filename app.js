@@ -102,6 +102,14 @@ const App = {
         this._scheduleAutosave();
     },
 
+    // 지연 없이 지금 바로 서버에 저장 (삭제처럼 되돌릴 수 없는 작업용)
+    async _saveNow() {
+        localStorage.setItem('school-planner-v4', JSON.stringify(this.state));
+        clearTimeout(this._autosaveTimer);
+        if (!this.state.roomCode || !this._serverLoaded) return;
+        await FirebaseDB.saveAdmin(this.state.roomCode, this.state);
+    },
+
     // 수정할 때마다 짧은 지연 후 전체 데이터를 자동 저장(빠른 연속 입력은 하나로 묶어서 저장)
     _scheduleAutosave() {
         if (!this.state.roomCode) return;
@@ -1100,8 +1108,14 @@ const App = {
             const curWData = this.state.history[this.state.currentWeek];
             if (curWData && !curWData.specialistAutofilled) {
                 this._autofillSpecialistsForWeek(this.state.currentWeek);
+                // 실제로 채운 게 있을 때만 서버에 다시 쓴다.
+                // 불러올 때마다 무조건 저장하면, 열어둔 지 오래된 탭이 나중에
+                // 자기 옛 상태를 서버에 되돌려 써서 지운 주차가 되살아난다.
+                this.saveData();
+            } else {
+                // 서버 내용을 그대로 받아온 것뿐이므로 이 브라우저에만 기록
+                localStorage.setItem('school-planner-v4', JSON.stringify(this.state));
             }
-            this.saveData();
             this.renderTimetableLayout();
             this.calculateAndRenderValidationView?.();
             const who = data.lastSavedBy ? `(${data.lastSavedBy} 저장본)` : '';
@@ -2468,9 +2482,10 @@ const App = {
             this.state.history = next;
             this.state.maxWeek = kept.length;
             if (this.state.currentWeek > this.state.maxWeek) this.state.currentWeek = this.state.maxWeek;
-            this.saveData();
             this.renderLibrary();
-            this.showToast('삭제했습니다.');
+            // 삭제는 되돌릴 수 없는 작업이라 0.8초 지연 저장에 맡기지 않고 즉시 서버에 반영한다
+            this._saveNow().then(() => this.showToast('삭제했습니다.'))
+                .catch(() => this.showAlert('저장 실패', '삭제 내용을 서버에 저장하지 못했습니다.<br>인터넷 연결을 확인한 뒤 다시 시도해주세요.'));
         });
     },
 
