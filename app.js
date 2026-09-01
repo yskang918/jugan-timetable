@@ -4095,6 +4095,19 @@ ${bodyRows.join('')}
             .map(sp => sp.subject || sp.name)
             .filter(Boolean));
         specialistSubs.forEach(sub => { wData.targets[sub] = this._avgFilledForSubject(week, sub); });
+
+        // 국(도)·체(강)·과(실)처럼 괄호가 붙은 전담은 국어·체육·과학에 합쳐서 세므로,
+        // 그 기본 과목의 이번 주 차시가 최소한 이미 고정된 칸 수만큼은 되도록 맞춘다.
+        // (안 그러면 새 주차에서 국(도) 1칸이 놓여 있는데도 국어가 0으로 보임)
+        const fixedByBase = {};
+        specialistSubs.forEach(sub => {
+            const base = this._baseOf(sub);
+            if (base === sub) return;   // 영어·도덕처럼 과목 자체가 전담인 경우는 위에서 처리됨
+            fixedByBase[base] = (fixedByBase[base] || 0) + this._classCountsForSubject(week, sub).max;
+        });
+        Object.keys(fixedByBase).forEach(base => {
+            if (fixedByBase[base] > (wData.targets[base] || 0)) wData.targets[base] = fixedByBase[base];
+        });
     },
 
     // 현재 주차에서 이 과목이 전담 배정으로 자동 집계되는 과목인지
