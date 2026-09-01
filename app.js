@@ -1743,6 +1743,7 @@ const App = {
         const body = document.getElementById('step3-body');
         if (!body) return;
         const wData = this.state.history[this.state.currentWeek];
+        this._step3Conflicts = this._computeFixedConflicts();
         let h = '';
         for (let c = 1; c <= this.state.config.classCount; c++) {
             const cStr = String(c);
@@ -2145,6 +2146,36 @@ const App = {
         if (el) el.textContent = sum;
     },
 
+    // 1단계에서 고정한 전담이 다른 반과 같은 요일·교시에 겹치는지 찾는다.
+    // 전담 선생님은 같은 시간에 한 반만 가르칠 수 있으므로, 같은 과목이
+    // 같은 칸에 두 반 이상 들어가 있으면 겹침으로 본다.
+    // 반환: { "반|요일|교시": [겹치는 다른 반 번호들] }
+    _computeFixedConflicts() {
+        const wData = this.state.history[this.state.currentWeek];
+        const bySlot = {};
+        for (let c = 1; c <= this.state.config.classCount; c++) {
+            const cStr = String(c);
+            this.days.forEach(d => {
+                for (let p = 0; p < this.state.config.periods[d]; p++) {
+                    if (!wData.specialistCells?.[cStr]?.[d]?.[p]) continue;
+                    const v = (wData.classes[cStr] || {})[d]?.[p];
+                    if (!v) continue;
+                    const key = `${d}|${p}|${v}`;
+                    (bySlot[key] = bySlot[key] || []).push(c);
+                }
+            });
+        }
+        const res = {};
+        Object.entries(bySlot).forEach(([key, classes]) => {
+            if (classes.length < 2) return;
+            const [d, p] = key.split('|');
+            classes.forEach(c => {
+                res[`${c}|${d}|${p}`] = classes.filter(x => x !== c);
+            });
+        });
+        return res;
+    },
+
     // 한 반의 타일 격자 HTML.
     // onlyFixed=true  : 1단계 — 고정된 칸만 보여줌
     // onlyFixed=false : 3단계 — 모든 과목을 보여주고, 고정 칸은 자물쇠 표시
@@ -2168,8 +2199,12 @@ const App = {
                 const bg = (!isSel && sp && sp.bg) ? ` style="background-color:${sp.bg};"` : '';
                 // 전담 보드에 없는데 잠겨 있으면 = 이번 주만 손으로 고정한 칸
                 const manual = isLocked && val && !sp;
+                // 3단계에서만 — 고정 전담이 다른 반과 같은 시간에 겹치는지
+                const clash = (!onlyFixed && isLocked && val && this._step3Conflicts)
+                    ? this._step3Conflicts[`${cStr}|${d}|${p}`] : null;
                 const cls = `ts-tile${!val ? ' ts-tile-empty' : ''}${isSel ? ' ts-tile-selected' : ''}` +
-                            `${manual ? ' ts-tile-manual' : ''}${(!onlyFixed && isLocked) ? ' ts-tile-fixed' : ''}`;
+                            `${manual ? ' ts-tile-manual' : ''}${(!onlyFixed && isLocked) ? ' ts-tile-fixed' : ''}` +
+                            `${clash ? ' ts-tile-clash' : ''}`;
 
                 // 3단계(onlyFixed=false)는 자리 바꾸기만 허용 — 글자 입력·삭제는 막는다.
                 // (차시 수가 틀어지지 않게 하려는 것)
@@ -2179,7 +2214,9 @@ const App = {
                         ${val ? `<div class="ts-tile-x" data-cls="${cStr}" data-day="${d}" data-idx="${p}">✕</div>` : ''}
                     </div>`;
                 } else {
-                    h += `<div class="${cls}"${bg} data-cls="${cStr}" data-day="${d}" data-idx="${p}"><span class="ts-tile-label">${val}</span></div>`;
+                    h += `<div class="${cls}"${bg} data-cls="${cStr}" data-day="${d}" data-idx="${p}"><span class="ts-tile-label">${val}</span>${
+                        clash ? `<span class="ts-clash-tag" title="${clash.join('반, ')}반과 같은 시간에 겹칩니다">${clash.join(',')}반</span>` : ''
+                    }</div>`;
                 }
             });
         }
@@ -2189,6 +2226,7 @@ const App = {
     renderTileStep() {
         const body = document.getElementById('tile-step-body');
         if (!body) return;
+        this._step3Conflicts = null;
         this._renderSpecialistToggles();
         let h = '';
         for (let c = 1; c <= this.state.config.classCount; c++) {

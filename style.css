@@ -559,6 +559,21 @@ td.duplicate-error { background-color: #fee2e2 !important; border: 2px solid #ef
     background: #fffbeb;
     border-style: dashed; border-color: #f59e0b;
 }
+/* 3단계 — 고정 전담이 다른 반과 같은 시간에 겹칠 때 */
+.ts-tile-clash {
+    background: #fee2e2 !important;
+    border-color: #dc2626 !important;
+    box-shadow: 0 0 0 2px rgba(220,38,38,0.35);
+}
+.ts-tile-clash .ts-tile-label { color: #b91c1c; }
+.ts-clash-tag {
+    position: absolute; left: 2px; right: 2px; bottom: 1px;
+    font-size: 0.52rem; font-weight: 800; color: #dc2626;
+    text-align: center; line-height: 1;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    pointer-events: none;
+}
+
 /* 3단계에서 고정된 칸 표시 */
 .ts-tile-fixed::after {
     content: '🔒';
