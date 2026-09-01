@@ -509,6 +509,40 @@ td.duplicate-error { background-color: #fee2e2 !important; border: 2px solid #ef
 .ts-header .ts-next-btn,
 .ts-header .ts-save { flex-shrink: 0; }
 
+/* 1단계 상단: 이번 주에 넣을 전담 시간표 켜고 끄기 */
+.ts-bar {
+    flex-shrink: 0;
+    display: flex; align-items: center; flex-wrap: wrap; gap: 7px;
+    padding: 9px 16px; background: #e2e8f0;
+    border-bottom: 1px solid #cbd5e1;
+}
+.ts-bar-label {
+    font-size: 0.78rem; font-weight: 800; color: #475569;
+    margin-right: 2px; white-space: nowrap;
+}
+.ts-bar-hint {
+    font-size: 0.74rem; color: #64748b; font-weight: 600;
+    margin-left: 4px; white-space: nowrap;
+}
+.ts-sp-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    border: 1.5px solid #cbd5e1; background: #f8fafc; color: #94a3b8;
+    border-radius: 20px; padding: 4px 12px 4px 9px;
+    font-size: 0.82rem; font-weight: 800; cursor: pointer;
+    transition: var(--transition);
+    text-decoration: line-through;
+}
+.ts-sp-chip .ts-sp-dot {
+    width: 9px; height: 9px; border-radius: 50%;
+    background: #cbd5e1; flex-shrink: 0;
+}
+.ts-sp-chip.on {
+    border-color: #94a3b8; color: var(--text-main);
+    text-decoration: none;
+}
+.ts-sp-chip.on .ts-sp-dot { background: var(--primary-color); }
+.ts-sp-chip:hover { border-color: var(--primary-color); }
+
 /* 이번 주만 손으로 고정한 칸 — 전담 배정과 구분되게 점선 테두리 */
 .ts-tile-manual {
     background: #fffbeb;

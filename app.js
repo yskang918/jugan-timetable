@@ -2185,6 +2185,7 @@ const App = {
     renderTileStep() {
         const body = document.getElementById('tile-step-body');
         if (!body) return;
+        this._renderSpecialistToggles();
         let h = '';
         for (let c = 1; c <= this.state.config.classCount; c++) {
             h += `<div class="ts-class-card"><div class="ts-class-title">${c}반</div>${this._tileGridHtml(String(c), true)}</div>`;
@@ -2216,6 +2217,11 @@ const App = {
                 sel: '#tile-step-body .ts-class-card',
                 title: '② 1단계 — 전담 시간표 확인',
                 text: '설정에 등록해 둔 <b>전담 수업이 자동으로 배정된 상태</b>로 시작합니다.<br>과목을 누르면 분홍색으로 흔들리고, 다른 칸을 누르면 두 과목의 <b>자리가 바뀝니다</b>. ✕를 누르면 지워집니다.'
+            },
+            {
+                sel: '#tile-step-bar',
+                title: '이번 주에 넣을 전담만 켜기',
+                text: '전담 과목마다 켜고 끌 수 있습니다.<br><b>끄면</b> 그 과목이 이번 주 시간표에서 빠지고, <b>켜면</b> 원래 자리에 다시 들어갑니다.<br>2단계의 차시에도 자동으로 반영돼요.'
             },
             {
                 sel: '#tile-step-overlay .ts-header-sub',
@@ -2477,6 +2483,105 @@ const App = {
             this._saveNow().then(() => this.showToast('삭제했습니다.'))
                 .catch(() => this.showAlert('저장 실패', '삭제 내용을 서버에 저장하지 못했습니다.<br>인터넷 연결을 확인한 뒤 다시 시도해주세요.'));
         });
+    },
+
+    /* --- 1단계: 전담 시간표를 이번 주에 넣을지 켜고 끄기 --- */
+
+    // 이번 주에 이 전담 보드를 쓰는지 여부
+    _spOnThisWeek(sp) {
+        return !(sp.hiddenWeeks || []).includes(this.state.currentWeek);
+    },
+
+    _renderSpecialistToggles() {
+        const bar = document.getElementById('tile-step-bar');
+        if (!bar) return;
+        const boards = this._sp().filter(sp => (sp.subject || sp.name));
+        if (boards.length === 0) { bar.innerHTML = ''; return; }
+
+        const chips = this._sp().map((sp, idx) => {
+            const name = sp.subject || sp.name;
+            if (!name) return '';
+            const on = this._spOnThisWeek(sp);
+            const bg = on && sp.bg ? ` style="background:${sp.bg};"` : '';
+            return `<button class="ts-sp-chip${on ? ' on' : ''}"${bg}
+                onclick="App.toggleSpecialistThisWeek(${idx})"
+                title="${on ? '이번 주 시간표에서 빼기' : '이번 주 시간표에 넣기'}">
+                <span class="ts-sp-dot"></span>${name}
+            </button>`;
+        }).join('');
+
+        bar.innerHTML = `<span class="ts-bar-label">이번 주 전담 시간표</span>${chips}
+            <span class="ts-bar-hint">끄면 그 과목이 이번 주 시간표에서 빠지고, 2단계 차시에도 반영됩니다.</span>`;
+    },
+
+    // 켜면 후보 칸을 채우고, 끄면 이번 주 시간표에서 그 과목을 걷어낸다
+    toggleSpecialistThisWeek(idx) {
+        const week = this.state.currentWeek;
+        const sp = this._sp(week)[idx];
+        if (!sp) return;
+        const name = sp.subject || sp.name;
+        if (!name) return;
+
+        if (this._spOnThisWeek(sp)) {
+            if (!sp.hiddenWeeks) sp.hiddenWeeks = [];
+            sp.hiddenWeeks.push(week);
+            this._clearSubjectCells(week, name);
+            this.showToast(`${name} — 이번 주 시간표에서 뺐습니다.`);
+        } else {
+            sp.hiddenWeeks = (sp.hiddenWeeks || []).filter(w => w !== week);
+            this._fillOneSpecialist(week, sp);
+            this.showToast(`${name} — 이번 주 시간표에 넣었습니다.`);
+        }
+
+        this.state.tileSel = null;
+        this._syncSpecialistTargets(week);
+        this.state.isDirty = true;
+        this.saveData();
+        this.renderTileStep();
+    },
+
+    // 이번 주 시간표에서 이 과목이 들어간 칸을 모두 비운다
+    _clearSubjectCells(week, sub) {
+        const wData = this.state.history[week];
+        if (!wData) return;
+        for (let c = 1; c <= this.state.config.classCount; c++) {
+            const cStr = String(c);
+            this.days.forEach(d => {
+                const arr = (wData.classes[cStr] || {})[d] || [];
+                for (let p = 0; p < arr.length; p++) {
+                    if (arr[p] !== sub) continue;
+                    arr[p] = '';
+                    if (wData.specialistCells?.[cStr]?.[d]) delete wData.specialistCells[cStr][d][p];
+                }
+            });
+        }
+    },
+
+    // 전담 보드 하나만 후보 칸에 채운다 (다른 전담이 잡은 칸은 건드리지 않음)
+    _fillOneSpecialist(week, sp) {
+        const wData = this.state.history[week];
+        if (!wData) return;
+        const sub = sp.subject || sp.name;
+        if (!wData.specialistCells) wData.specialistCells = {};
+        for (let c = 1; c <= this.state.config.classCount; c++) {
+            const cStr = String(c);
+            if (!wData.classes[cStr]) wData.classes[cStr] = { "월": [], "화": [], "수": [], "목": [], "금": [] };
+            const classData = wData.classes[cStr];
+            this.days.forEach(d => {
+                if (!classData[d]) classData[d] = [];
+                if (!sp.data[d]) return;
+                for (let p = 0; p < this.state.config.periods[d]; p++) {
+                    if (!sp.data[d][p]) continue;
+                    const list = String(sp.data[d][p]).split(/[,\s]+/).map(v => v.trim()).filter(Boolean);
+                    if (!list.includes(cStr)) continue;
+                    if (wData.specialistCells[cStr]?.[d]?.[p]) continue;   // 다른 전담이 이미 쓰는 칸
+                    classData[d][p] = sub;
+                    if (!wData.specialistCells[cStr]) wData.specialistCells[cStr] = {};
+                    if (!wData.specialistCells[cStr][d]) wData.specialistCells[cStr][d] = {};
+                    wData.specialistCells[cStr][d][p] = true;
+                }
+            });
+        }
     },
 
     // 지금 열려 있는 단계 화면을 다시 그린다 (1단계/3단계 공용 타일 조작용)
