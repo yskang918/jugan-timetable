@@ -1,0 +1,29 @@
+{
+  "hosting": {
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      ".firebaserc",
+      "**/.git/**",
+      "**/node_modules/**",
+      "README.md",
+      "server.log"
+    ],
+    "headers": [
+      {
+        "//": "화면 파일은 항상 최신을 받아오게 해서, 배포 후 새로고침만으로 반영되도록 함",
+        "source": "/index.html",
+        "headers": [
+          { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+        ]
+      },
+      {
+        "//": "js/css는 index.html의 ?v= 값으로 버전을 구분하므로 길게 캐시해도 안전",
+        "source": "**/*.@(js|css|png|woff2)",
+        "headers": [
+          { "key": "Cache-Control", "value": "public, max-age=31536000" }
+        ]
+      }
+    ]
+  }
+}
