@@ -105,6 +105,9 @@ const App = {
     // 수정할 때마다 짧은 지연 후 전체 데이터를 자동 저장(빠른 연속 입력은 하나로 묶어서 저장)
     _scheduleAutosave() {
         if (!this.state.roomCode) return;
+        // 서버에서 아직 불러오지 못했다면 저장하지 않는다.
+        // 브라우저에 남아 있던 옛 데이터가 서버의 최신 시간표를 덮어쓰는 사고를 막기 위함.
+        if (!this._serverLoaded) return;
         const setSave = (txt) => {
             const ind = document.getElementById('autosave-indicator');
             if (ind) ind.textContent = txt;
@@ -1052,12 +1055,16 @@ const App = {
         try {
             const data = await FirebaseDB.load(this.state.roomCode);
             if (!data) {
+                // 서버가 비어 있으면 덮어쓸 내용도 없으므로 저장을 허용한다
+                this._serverLoaded = true;
                 this.showToast('아직 저장된 데이터가 없습니다. 설정부터 시작해주세요.');
                 return;
             }
             // 로그인 상태·UI 상태는 유지하고 나머지만 덮어씀
             const keep = { userProfile: this.state.userProfile, roomCode: this.state.roomCode, isAdmin: this.state.isAdmin, selectedSub: this.state.selectedSub, selectedSidebarColor: this.state.selectedSidebarColor, spPreviewOpen: false, isMarkingMode: false, isHelperMode: false, markingColor: this.state.markingColor };
             this.state = { ...this.state, ...data, ...keep };
+            // 여기서부터는 서버 내용이 반영된 상태이므로 자동 저장을 허용한다
+            this._serverLoaded = true;
             // 새 방이거나 서버에 과목이 없으면 기본 과목 적용
             if (!this.state.config) this.state.config = { grade: '', classCount: 4, periods: { "월": 6, "화": 6, "수": 5, "목": 6, "금": 6 }, subjects: [] };
             if (!this.state.config.subjects || this.state.config.subjects.length === 0) {

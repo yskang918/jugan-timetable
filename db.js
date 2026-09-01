@@ -62,6 +62,9 @@ function _buildAdminPayload(existing, state) {
     const wData = (state.history || {})[w];
     if (!wData) continue;
     data.history[w] = {
+      // 저장소에서 지은 주차 이름. 빠뜨리면 새로고침할 때마다 "N주차"로 되돌아감
+      name:              wData.name              || '',
+      specialistAutofilled: !!wData.specialistAutofilled,
       targets:           wData.targets           || {},
       specialistTargets: wData.specialistTargets || {},
       specialistMemo:    wData.specialistMemo    || '',
