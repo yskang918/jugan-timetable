@@ -2881,7 +2881,7 @@ const App = {
 
             // MATCH CSS structure: .specialist-table-header, .sp-header-inputs, .sp-subject-input, .sp-desc-input
             let h = `
-                ${isHidden ? `<div style="position:absolute;top:0;left:0;right:0;bottom:0;z-index:2;display:flex;align-items:center;justify-content:center;pointer-events:none;"><span style="background:rgba(0,0,0,0.55);color:#fff;padding:6px 18px;border-radius:20px;font-weight:700;font-size:0.9rem;">이번 주 숨김 — 주간학습에 미반영</span></div>` : ''}
+                ${isHidden ? `<div style="position:absolute;top:0;left:0;right:0;bottom:0;z-index:2;display:flex;align-items:center;justify-content:center;pointer-events:none;"><span style="background:rgba(0,0,0,0.55);color:#fff;padding:6px 18px;border-radius:20px;font-weight:700;font-size:0.9rem;">이번 주 미사용</span></div>` : ''}
                 <div class="specialist-table-header" style="background-color:${sp.bg || '#f9fafb'};">
                     <div class="sp-header-inputs">
                         <input type="text" class="sp-subject-input" value="${spName}" placeholder="과목명" oninput="App.updateSpName(${idx}, this.value)">
@@ -2903,8 +2903,9 @@ const App = {
                         <button class="del-btn" onclick="App.deleteSp(${idx})">✕</button>
                     </div>
                 </div>
-                <div style="display:flex;align-items:center;gap:10px;padding:4px 10px;background:${isHidden ? '#ede9fe' : '#f8fafc'};border-bottom:1px solid #e5e7eb;flex-wrap:wrap;">
-                    <button onclick="App.toggleSpHide(${idx})" style="padding:3px 12px;border-radius:6px;font-size:0.76rem;font-weight:700;border:1.5px solid ${isHidden ? '#6366f1' : '#cbd5e1'};background:${isHidden ? '#ddd6fe' : '#f1f5f9'};color:${isHidden ? '#4f46e5' : '#64748b'};cursor:pointer;">${isHidden ? '✓ 이번 주 숨김 (클릭 시 해제)' : '이번 주 숨기기'}</button>
+                <div style="display:flex;align-items:center;gap:8px;padding:4px 10px;background:#f8fafc;border-bottom:1px solid #e5e7eb;flex-wrap:wrap;">
+                    <span style="padding:3px 10px;border-radius:20px;font-size:0.74rem;font-weight:800;background:${isHidden ? '#e2e8f0' : '#dcfce7'};color:${isHidden ? '#64748b' : '#15803d'};">${isHidden ? '이번 주 미사용' : '이번 주 사용 중'}</span>
+                    <span style="font-size:0.72rem;color:#94a3b8;font-weight:600;">1단계 화면에서 켜고 끕니다</span>
                 </div>
                 <table class="excel-table sp-table"><thead><tr><th>교시</th>${this.days.map(d=>`<th>${d}</th>`).join('')}</tr></thead><tbody>`;
             const maxP = Math.max(...Object.values(this.state.config.periods));
@@ -4059,17 +4060,6 @@ ${bodyRows.join('')}
         }
     },
     
-    toggleSpHide(idx) {
-        const sp = this._sp()[idx];
-        if (!sp.hiddenWeeks) sp.hiddenWeeks = [];
-        const week = this.state.currentWeek;
-        const i = sp.hiddenWeeks.indexOf(week);
-        if (i === -1) sp.hiddenWeeks.push(week);
-        else sp.hiddenWeeks.splice(i, 1);
-        this.saveData();
-        this.renderSpecialistView();
-    },
-
     // 전담 보드 하나만 골라서 전체 시간표에 반영 (해당 주차에 없는 과목/줄어든 과목을 건너뛸 수 있게)
     // 전담 배정을 반별 시간표에 자동으로 채워 넣음. 이미 값이 있는 칸은 절대 덮어쓰지 않으므로
     // (X로 지운 칸이 다시 채워지지 않도록) 몇 번을 호출해도 안전합니다.
