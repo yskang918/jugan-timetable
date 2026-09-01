@@ -2522,14 +2522,26 @@ const App = {
         const name = sp.subject || sp.name;
         if (!name) return;
 
+        const wData = this.state.history[week];
+        const base = this._baseOf(name);
+
         if (this._spOnThisWeek(sp)) {
+            // 끄기 — 뺀 칸 수만큼 기본 과목의 이번 주 차시도 줄인다
+            const n = this._classCountsForSubject(week, name).max;
             if (!sp.hiddenWeeks) sp.hiddenWeeks = [];
             sp.hiddenWeeks.push(week);
             this._clearSubjectCells(week, name);
+            wData.targets[base] = Math.max(0, (wData.targets[base] || 0) - n);
             this.showToast(`${name} — 이번 주 시간표에서 뺐습니다.`);
         } else {
+            // 켜기 — 채운 칸 수만큼 기본 과목의 차시를 늘린다
+            // (영어·도덕처럼 과목 자체가 전담이면 _syncSpecialistTargets가 값을 정하므로 건드리지 않음)
             sp.hiddenWeeks = (sp.hiddenWeeks || []).filter(w => w !== week);
             this._fillOneSpecialist(week, sp);
+            if (base !== name) {
+                const n = this._classCountsForSubject(week, name).max;
+                wData.targets[base] = (wData.targets[base] || 0) + n;
+            }
             this.showToast(`${name} — 이번 주 시간표에 넣었습니다.`);
         }
 
