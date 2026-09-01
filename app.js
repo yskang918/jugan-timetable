@@ -1646,6 +1646,7 @@ const App = {
             .forEach(id => document.getElementById(id)?.classList.add('hide'));
         document.getElementById('tile-step-overlay').classList.remove('hide');
         this.renderTileStep();
+        this._syncStepTitles();
     },
     // 설정을 어디서 열었는지 기억해뒀다가 '뒤로가기'로 그 화면에 그대로 돌려보낸다.
     // 지금은 1단계뿐이지만, 2·3단계가 생기면 여기에 항목만 추가하면 된다.
@@ -1657,6 +1658,7 @@ const App = {
         document.getElementById('settings-overlay').classList.remove('hide');
         this.renderSettingsView();
         this.renderSpecialistView();
+        this._syncStepTitles();
     },
     openSettingsFromTileStep() {
         this.openSettings({ type: 'step', step: 1 });
@@ -1687,6 +1689,7 @@ const App = {
         // 1단계에서 전담 배정을 고쳤을 수 있으므로 들어올 때마다 다시 계산
         this._syncSpecialistTargets(this.state.currentWeek);
         this.renderStep2();
+        this._syncStepTitles();
     },
     step2Back() {
         document.getElementById('step2-overlay').classList.add('hide');
@@ -1706,6 +1709,7 @@ const App = {
             .forEach(id => document.getElementById(id)?.classList.add('hide'));
         document.getElementById('step3-overlay').classList.remove('hide');
         this.renderStep3();
+        this._syncStepTitles();
     },
     step3Back() {
         this.state.tileSel = null;
@@ -2457,6 +2461,7 @@ const App = {
         this.state.history[w].name = String(name).trim() || `${w}주차`;
         this.saveData();
         this.renderLibrary();
+        this._syncStepTitles();
     },
 
     libDeleteWeek(w) {
@@ -2490,6 +2495,15 @@ const App = {
     // 이번 주에 이 전담 보드를 쓰는지 여부
     _spOnThisWeek(sp) {
         return !(sp.hiddenWeeks || []).includes(this.state.currentWeek);
+    },
+
+    // 각 단계 헤더에 지금 작업 중인 시간표 이름을 표시
+    _syncStepTitles() {
+        const name = this._weekName(this.state.currentWeek);
+        ['set', '1', '2', '3'].forEach(k => {
+            const el = document.getElementById(`ts-wk-name-${k}`);
+            if (el) el.textContent = name;
+        });
     },
 
     _renderSpecialistToggles() {

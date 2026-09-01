@@ -446,7 +446,18 @@ td.duplicate-error { background-color: #fee2e2 !important; border: 2px solid #ef
     padding: 14px 24px; background: #1e293b;
     border-bottom: 1px solid #334155; flex-shrink: 0;
 }
-.ts-title { color: #f8fafc; font-size: 1.05rem; font-weight: 800; white-space: nowrap; }
+.ts-title {
+    color: #f8fafc; font-size: 1.05rem; font-weight: 800; white-space: nowrap;
+    display: flex; align-items: center; gap: 9px;
+}
+/* 지금 작업 중인 시간표 이름 */
+.ts-wk-name {
+    background: var(--primary-color); color: #fff;
+    font-size: 0.82rem; font-weight: 800;
+    border-radius: 8px; padding: 3px 11px;
+    max-width: 220px; overflow: hidden; text-overflow: ellipsis;
+}
+.ts-wk-name:empty { display: none; }
 .ts-header-sub { color: #94a3b8; font-size: 0.82rem; flex: 1; }
 .ts-x-hint {
     display: inline-flex; align-items: center; justify-content: center;
