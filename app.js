@@ -2210,7 +2210,7 @@ const App = {
             {
                 sel: '.lib-new',
                 title: '새 시간표 만들기',
-                text: '새로운 한 주를 시작할 때 누릅니다. 이름을 정할 수 있어서 <b>“9월 2주”</b>처럼 알아보기 쉽게 저장할 수 있어요.<br>새로 만든 시간표에는 전담 시간표가 자동으로 채워집니다.'
+                text: '새로운 한 주를 시작할 때 누릅니다. 이름을 정할 수 있어서 <b>“9월 2주”</b>처럼 알아보기 쉽게 저장할 수 있어요.<br>새로 만든 시간표는 <b>아무것도 배정되지 않은 빈 상태</b>로 시작합니다.'
             },
             {
                 before: () => { hideAll('tile-step-overlay'); this.openTileStep(); },
@@ -3926,10 +3926,23 @@ ${bodyRows.join('')}
             curr.specialistTargets = JSON.parse(JSON.stringify(prev.specialistTargets || {}));
             curr.specialistMemo = prev.specialistMemo || '';
             curr.specialists = JSON.parse(JSON.stringify(prev.specialists || this.state.specialists || []));
-            // 전담 배정을 새 주차 반별 시간표에 기본으로 채움 (필요 없는 칸은 시간표에서 직접 지우면 됨)
-            this._autofillSpecialistsForWeek(this.state.currentWeek);
-            // 매주 반복으로 설정된 고정 배정을 새 주차에도 자동 적용
-            (prev.fixedSlots || []).filter(r => r.repeat).forEach(r => this._applyFixedSlotRule(this.state.currentWeek, r));
+        }
+        // 새 주차는 아무것도 배정되지 않은 빈 상태로 시작한다.
+        // 전담 보드는 모두 꺼둔 채로 두고(1단계 토글로 필요한 것만 켬), 차시도 전부 0.
+        (curr.specialists || []).forEach(sp => {
+            const hw = new Set(sp.hiddenWeeks || []);
+            hw.add(this.state.currentWeek);
+            sp.hiddenWeeks = [...hw];
+        });
+        curr.targets = {};
+        curr.classes = {};
+        curr.specialistCells = {};
+        curr.bgColors = {};
+        curr.fixedSlots = [];
+        // 자동 채움을 이미 거친 것으로 표시 — 다음에 불러올 때 전담이 저절로 들어가지 않게
+        curr.specialistAutofilled = true;
+        for (let c = 1; c <= this.state.config.classCount; c++) {
+            curr.classes[String(c)] = { "월": [], "화": [], "수": [], "목": [], "금": [] };
         }
         this.saveData();
         this.renderTimetableLayout();
