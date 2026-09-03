@@ -2272,7 +2272,22 @@ const App = {
                 before: () => { this.openLibrary(); },
                 sel: '.lib-grid',
                 title: '① 시간표 저장소',
-                text: '앱을 열면 가장 먼저 나오는 화면입니다. 지금까지 만든 시간표가 카드로 쌓여 있어요.<br>카드를 누르면 그 주차를 이어서 편집합니다. 막대는 얼마나 채워졌는지 보여줍니다.'
+                text: '학년을 고르면 나오는 첫 화면입니다. 지금까지 만든 시간표가 카드로 쌓여 있어요.<br>카드를 누르면 그 시간표를 1단계부터 이어서 편집합니다. 막대는 얼마나 채워졌는지 보여주고, <b>완성</b> 배지는 빈 칸이 하나도 없다는 뜻입니다.'
+            },
+            {
+                sel: '.lib-sample',
+                title: '첫 카드는 샘플',
+                text: '맨 앞 칸은 항상 <b>샘플</b> 카드입니다.<br>완성된 시간표 예시와 1~3단계 사용법을 한 화면에서 볼 수 있어요.<br>보기만 하는 카드라서 실제 시간표에는 영향을 주지 않습니다.'
+            },
+            {
+                sel: '.lib-card:not(.lib-sample) .lib-actions',
+                title: '이름 변경 · 삭제',
+                text: '카드마다 <b>이름 변경</b>과 <b>삭제</b>가 있습니다.<br>삭제한 시간표는 되돌릴 수 없으니 확인 후에 누르세요.'
+            },
+            {
+                sel: '#library-overlay .ts-old-view-btn',
+                title: '학년별로 따로 저장됩니다',
+                text: '이 앱은 <b>학년마다 설정과 시간표가 완전히 분리</b>되어 있습니다. 다른 학년 담당자가 고쳐도 서로 영향을 주지 않아요.<br>한 번 고른 학년은 이 브라우저가 기억해서 다음부터 바로 열리고, 이 버튼으로 언제든 바꿀 수 있습니다.'
             },
             {
                 sel: '.lib-new',
@@ -2298,7 +2313,7 @@ const App = {
             {
                 sel: '#btn-ts-settings',
                 title: '설정은 여기에',
-                text: '학년·학급 수·요일별 교시 수, 운영 과목, 전담 시간표를 한 화면에서 설정합니다.<br>전담 시간표를 여기서 만들어 두면 1단계에 자동으로 반영됩니다.'
+                text: '학년·학급 수·요일별 교시 수, 운영 과목, 전담 시간표를 한 화면에서 설정합니다.<br>전담 시간표를 여기서 만들어 두면 1단계에 자동으로 반영됩니다.<br>운영 과목은 <b>국어·사회·도덕·수학·과학·체육·음악·미술·영어·자율·동아리·봉사·진로</b> 순서로 자동 정렬되고, 국(도)·체(강)처럼 파생된 과목은 원래 과목 바로 뒤에 붙습니다.'
             },
             {
                 before: () => { hideAll('step2-overlay'); this.openStep2(); },
@@ -2315,7 +2330,7 @@ const App = {
                 before: () => { hideAll('step3-overlay'); this.openStep3(); },
                 sel: '#step3-body .s3-card',
                 title: '④ 3단계 — 반별 시간표 배정',
-                text: '처음 들어오면 1단계에서 고정한 칸(🔒)만 채워져 있고 나머지는 비어 있습니다.<br>여기서는 과목을 눌러 <b>자리만 서로 바꿀 수 있습니다</b>(차시 수가 틀어지지 않도록).'
+                text: '처음 들어오면 1단계에서 고정한 칸(🔒)만 채워져 있고 나머지는 비어 있습니다.<br>여기서는 과목을 눌러 <b>자리만 서로 바꿀 수 있습니다</b>(차시 수가 틀어지지 않도록).<br>반끼리 전담 자리를 바꾸다가 <b>같은 전담이 두 반에 같은 시간으로 겹치면</b> 그 칸이 빨갛게 변하고 겹치는 반 번호가 붙습니다.'
             },
             {
                 sel: '#step3-body .s3-status',
@@ -2328,7 +2343,7 @@ const App = {
                 text: '3단계에 들어오면 <b>고정된 칸만</b> 채워져 있고 나머지는 비어 있습니다.<br>이 버튼을 눌러야 2단계에서 정한 차시대로 나머지 과목이 배정됩니다.<br>결과가 마음에 안 들면 다시 눌러 새로 배정할 수 있어요.'
             },
             {
-                sel: '#step3-overlay .ts-old-view-btn',
+                sels: ['#btn-s3-pdf', '#btn-s3-image', '#btn-s3-print'],
                 title: '저장 · 인쇄',
                 text: '완성한 시간표를 <b>PDF</b>나 <b>이미지</b> 파일로 저장할 수 있습니다. A4 한 장에 가로 2반씩 깔끔하게 들어갑니다.<br>바로 인쇄도 가능합니다.'
             },
@@ -2336,7 +2351,7 @@ const App = {
                 before: () => { hideAll('library-overlay'); this.openLibrary(); },
                 sel: null,
                 title: '준비 끝!',
-                text: '<b>저장소 → 1단계(전담 확인) → 2단계(차시 정하기) → 3단계(배정·출력)</b><br>이 순서로 진행하시면 됩니다.<br><br>작업 내용은 <b>자동으로 저장</b>되니 따로 저장 버튼을 누를 필요가 없어요.<br>튜토리얼은 첫 화면의 🎓 버튼으로 언제든 다시 볼 수 있습니다.'
+                text: '<b>저장소 → 1단계(전담 확인) → 2단계(차시 정하기) → 3단계(배정·출력)</b><br>이 순서로 진행하시면 됩니다.<br><br>각 단계 제목 옆에 <b>지금 작업 중인 시간표 이름</b>이 표시되고, 🗂️ 버튼으로 언제든 저장소로 돌아갈 수 있습니다.<br>작업 내용은 <b>자동으로 저장</b>되니 따로 저장 버튼을 누를 필요가 없어요.<br>다시 보시려면 첫 화면의 🎓 버튼이나 <b>샘플</b> 카드를 누르세요.'
             }
         ];
     },
@@ -2387,7 +2402,10 @@ const App = {
         const step = this._tutList[this._tutIdx];
         const spot = document.getElementById('tut-spot');
         const card = document.getElementById('tut-card');
-        const el = step.sel ? document.querySelector(step.sel) : null;
+        // sel(한 곳) 또는 sels(여러 곳을 묶어서 한 번에) 지원
+        const els = (step.sels || (step.sel ? [step.sel] : []))
+            .map(q => document.querySelector(q)).filter(Boolean);
+        const el = els[0] || null;
 
         if (!el) {
             // 특정 대상이 없는 안내 — 화면 전체를 어둡게 하고 가운데에 카드
@@ -2401,7 +2419,16 @@ const App = {
         }
 
         el.scrollIntoView({ block: 'center', behavior: 'instant' });
-        const r = el.getBoundingClientRect();
+        // 여러 곳을 비출 때는 그 전부를 감싸는 사각형을 쓴다
+        const rects = els.map(e => e.getBoundingClientRect());
+        const r = {
+            top: Math.min(...rects.map(x => x.top)),
+            left: Math.min(...rects.map(x => x.left)),
+            bottom: Math.max(...rects.map(x => x.bottom)),
+            right: Math.max(...rects.map(x => x.right))
+        };
+        r.width = r.right - r.left;
+        r.height = r.bottom - r.top;
         const pad = 8;
         spot.style.opacity = '1';
         spot.style.transform = 'none';
@@ -2532,7 +2559,14 @@ const App = {
     renderLibrary() {
         const body = document.getElementById('library-body');
         if (!body) return;
-        let cards = '';
+        let cards = `<div class="lib-card lib-sample" onclick="App.libOpenSample()" title="샘플 시간표 — 이렇게 사용합니다">
+            <div class="lib-card-top">
+                <span class="lib-num lib-num-sample">예</span>
+                <span class="lib-state lib-sample-tag">샘플</span>
+            </div>
+            <div class="lib-name">샘플 — 이렇게 사용합니다</div>
+            <div class="lib-sample-sub">완성된 시간표 예시와 1~3단계 사용법을 볼 수 있습니다.<br>실제 시간표에는 영향을 주지 않습니다.</div>
+        </div>`;
         for (let w = 1; w <= this.state.maxWeek; w++) {
             const s = this._weekSummary(w);
             const done = s.total > 0 && s.empty === 0;
@@ -2560,11 +2594,90 @@ const App = {
             <div class="lib-head">
                 <div>
                     <div class="lib-h1">시간표 저장소</div>
-                    <div class="lib-h2">전체 ${this.state.maxWeek}개 · 카드를 누르면 1단계부터 이어서 편집합니다.</div>
+                    <div class="lib-h2">내 시간표 ${this.state.maxWeek}개 · 카드를 누르면 1단계부터 이어서 편집합니다. 처음이시라면 <b>샘플</b> 카드를 먼저 눌러보세요.</div>
                 </div>
             </div>
             <div class="lib-grid">${cards}</div>
         </div>`;
+    },
+
+    // 저장소 첫 카드 '샘플' — 실제 데이터를 만들지 않고 예시만 보여준다(어느 학년에서나 동일).
+    _sampleWeek() {
+        return {
+            periods: { "월": 6, "화": 6, "수": 5, "목": 6, "금": 6 },
+            cells: {
+                "월": ["국어", "수학", "체(강)", "국어", "미술", "미술"],
+                "화": ["수학", "국어", "영어", "사회", "과학", "자율"],
+                "수": ["국어", "수학", "음악", "사회", "과학"],
+                "목": ["수학", "국어", "체(강)", "영어", "도덕", "진로"],
+                "금": ["국어", "사회", "음악", "과학", "체(강)", "자율"]
+            },
+            special: ["체(강)", "음악", "영어"],
+            blocks: { "월": [4, 5] }   // 미술 연차시
+        };
+    },
+
+    libOpenSample() {
+        const S = this._sampleWeek();
+        const maxP = Math.max(...Object.values(S.periods));
+
+        let table = '<table class="sample-tt"><thead><tr><th>교시</th>' +
+            this.days.map(d => `<th>${d}</th>`).join('') + '</tr></thead><tbody>';
+        for (let p = 0; p < maxP; p++) {
+            table += `<tr><th>${p + 1}</th>`;
+            this.days.forEach(d => {
+                if (p >= S.periods[d]) { table += '<td class="sample-off"></td>'; return; }
+                const sub = S.cells[d][p] || '';
+                const cls = [];
+                if (S.special.includes(sub)) cls.push('sample-sp');
+                if ((S.blocks[d] || []).includes(p)) cls.push('sample-block');
+                table += `<td class="${cls.join(' ')}">${sub}</td>`;
+            });
+            table += '</tr>';
+        }
+        table += '</tbody></table>';
+
+        const h = `
+            <div class="sample-wrap">
+                <div class="sample-cols">
+                    <div class="sample-left">
+                        <div class="sample-cap">3학년 1반 · 완성된 주간 시간표 예시 (총 29차시)</div>
+                        ${table}
+                        <div class="sample-legend">
+                            <span><i class="lg-sp"></i> 전담 수업(체육·음악·영어) — 1단계에서 자동으로 들어옵니다</span>
+                            <span><i class="lg-bk"></i> 연차시 — 2단계에서 켜면 두 시간이 붙어서 배정됩니다</span>
+                        </div>
+                    </div>
+                    <div class="sample-right">
+                        <div class="sample-step">
+                            <b>① 시간표 저장소</b>
+                            <p><b>새 시간표 만들기</b>로 이번 주 시간표를 만듭니다. 이름을 <b>“9월 2주”</b>처럼 붙여두면 나중에 찾기 쉽습니다. 새 시간표는 빈 상태로 시작합니다.</p>
+                        </div>
+                        <div class="sample-step">
+                            <b>② 1단계 — 전담 시간표 확인</b>
+                            <p>설정에 등록해 둔 전담 수업이 자동으로 들어와 있습니다(위 표의 <span class="lg-inline lg-sp"></span> 칸). 이번 주에 빠지는 전담은 <b>토글로 끄고</b>, 전담이 아니어도 그 주에만 고정할 자리는 빈 칸을 눌러 과목명을 적습니다.</p>
+                        </div>
+                        <div class="sample-step">
+                            <b>③ 2단계 — 과목별 이번 주 차시</b>
+                            <p>과목마다 이번 주에 몇 차시를 할지 정합니다. 1단계에서 고정한 칸은 <b>“1단계 고정”</b>으로 이미 계산되어 있으니 나머지만 채우면 됩니다. 미술처럼 이어서 하는 과목은 <b>연차시</b>를 켜세요.</p>
+                        </div>
+                        <div class="sample-step">
+                            <b>④ 3단계 — 반별 배정 · 출력</b>
+                            <p><b>과목 배정</b> 버튼을 눌러야 나머지 과목이 채워집니다. 마음에 안 들면 다시 눌러 새로 배정하고, 칸을 눌러 자리를 서로 바꿀 수 있습니다. 마지막에 <b>PDF·이미지</b>로 저장하거나 바로 인쇄합니다.</p>
+                        </div>
+                        <div class="sample-note">설정(학년·학급 수·교시 수·운영 과목·전담 시간표)은 1단계 화면의 <b>설정</b> 버튼에서 한 번만 맞춰두면 됩니다.</div>
+                        <button class="sample-tut-btn" onclick="App.closeModal(false); App.tutorialStart();">🎓 화면을 따라가며 보기 (튜토리얼)</button>
+                    </div>
+                </div>
+            </div>`;
+
+        this.dom.modalTitle.textContent = '샘플 — 이렇게 사용합니다';
+        this.dom.modalContent.innerHTML = h;
+        this.dom.modalCancel.classList.add('hide');
+        this.dom.modalConfirm.textContent = '닫기';
+        this.dom.modalContainer.classList.remove('hide');
+        this.dom.modalContainer.querySelector('.modal').classList.add('modal-wide');
+        this.modalResolve = null;
     },
 
     libOpenWeek(w) {
