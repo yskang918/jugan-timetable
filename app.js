@@ -98,12 +98,14 @@ const App = {
     },
 
     saveData() {
+        if (this.state.isSample) return;   // 샘플은 어디에도 저장하지 않는다
         localStorage.setItem('school-planner-v4', JSON.stringify(this.state));
         this._scheduleAutosave();
     },
 
     // 지연 없이 지금 바로 서버에 저장 (삭제처럼 되돌릴 수 없는 작업용)
     async _saveNow() {
+        if (this.state.isSample) return;
         localStorage.setItem('school-planner-v4', JSON.stringify(this.state));
         clearTimeout(this._autosaveTimer);
         if (!this.state.roomCode || !this._serverLoaded) return;
@@ -112,6 +114,7 @@ const App = {
 
     // 수정할 때마다 짧은 지연 후 전체 데이터를 자동 저장(빠른 연속 입력은 하나로 묶어서 저장)
     _scheduleAutosave() {
+        if (this.state.isSample) return;
         if (!this.state.roomCode) return;
         // 서버에서 아직 불러오지 못했다면 저장하지 않는다.
         // 브라우저에 남아 있던 옛 데이터가 서버의 최신 시간표를 덮어쓰는 사고를 막기 위함.
@@ -2272,17 +2275,17 @@ const App = {
                 before: () => { this.openLibrary(); },
                 sel: '.lib-grid',
                 title: '① 시간표 저장소',
-                text: '학년을 고르면 나오는 첫 화면입니다. 지금까지 만든 시간표가 카드로 쌓여 있어요.<br>카드를 누르면 그 시간표를 1단계부터 이어서 편집합니다. 막대는 얼마나 채워졌는지 보여주고, <b>완성</b> 배지는 빈 칸이 하나도 없다는 뜻입니다.'
+                text: '학년을 고르면 나오는 첫 화면입니다. 지금까지 만든 시간표가 카드로 쌓여 있어요.<br>카드를 누르면 그 시간표를 1단계부터 이어서 편집합니다. 막대는 얼마나 채워졌는지, <b>완성</b> 배지는 빈 칸이 하나도 없다는 뜻입니다.'
             },
             {
                 sel: '.lib-sample',
                 title: '첫 카드는 샘플',
-                text: '맨 앞 칸은 항상 <b>샘플</b> 카드입니다.<br>완성된 시간표 예시와 1~3단계 사용법을 한 화면에서 볼 수 있어요.<br>보기만 하는 카드라서 실제 시간표에는 영향을 주지 않습니다.'
+                text: '맨 앞 칸은 어느 학년에서나 똑같은 <b>샘플 시간표</b>입니다.<br>눌러서 1~3단계를 그대로 둘러보며 연습할 수 있어요.<br>무엇을 눌러도 <b>저장되지 않으니</b> 마음껏 만져보셔도 됩니다.'
             },
             {
-                sel: '.lib-card:not(.lib-sample) .lib-actions',
+                sel: '.lib-card .lib-actions',
                 title: '이름 변경 · 삭제',
-                text: '카드마다 <b>이름 변경</b>과 <b>삭제</b>가 있습니다.<br>삭제한 시간표는 되돌릴 수 없으니 확인 후에 누르세요.'
+                text: '내가 만든 카드마다 <b>이름 변경</b>과 <b>삭제</b>가 있습니다.<br>삭제한 시간표는 되돌릴 수 없으니 확인 후에 누르세요.'
             },
             {
                 sel: '#library-overlay .ts-old-view-btn',
@@ -2351,7 +2354,7 @@ const App = {
                 before: () => { hideAll('library-overlay'); this.openLibrary(); },
                 sel: null,
                 title: '준비 끝!',
-                text: '<b>저장소 → 1단계(전담 확인) → 2단계(차시 정하기) → 3단계(배정·출력)</b><br>이 순서로 진행하시면 됩니다.<br><br>각 단계 제목 옆에 <b>지금 작업 중인 시간표 이름</b>이 표시되고, 🗂️ 버튼으로 언제든 저장소로 돌아갈 수 있습니다.<br>작업 내용은 <b>자동으로 저장</b>되니 따로 저장 버튼을 누를 필요가 없어요.<br>다시 보시려면 첫 화면의 🎓 버튼이나 <b>샘플</b> 카드를 누르세요.'
+                text: '<b>저장소 → 1단계(전담 확인) → 2단계(차시 정하기) → 3단계(배정·출력)</b><br>이 순서로 진행하시면 됩니다.<br><br>각 단계 제목 옆에 <b>지금 작업 중인 시간표 이름</b>이 표시되고, 🗂️ 버튼으로 언제든 저장소로 돌아갈 수 있습니다.<br>작업 내용은 <b>자동으로 저장</b>되니 따로 저장 버튼을 누를 필요가 없어요.<br>다시 보시려면 첫 화면의 🎓 버튼을 누르세요.'
             }
         ];
     },
@@ -2548,6 +2551,7 @@ const App = {
     },
 
     openLibrary() {
+        this.exitSample();
         this.state.tileSel = null;
         this._syncGradeBadges();
         ['tile-step-overlay', 'step2-overlay', 'step3-overlay', 'settings-overlay']
@@ -2559,13 +2563,15 @@ const App = {
     renderLibrary() {
         const body = document.getElementById('library-body');
         if (!body) return;
-        let cards = `<div class="lib-card lib-sample" onclick="App.libOpenSample()" title="샘플 시간표 — 이렇게 사용합니다">
+        // 첫 카드는 항상 샘플(어느 학년에서나 같은 내용, 저장되지 않음)
+        let cards = `<div class="lib-card lib-sample" onclick="App.enterSample()" title="샘플 시간표 — 눌러서 살펴보세요">
             <div class="lib-card-top">
-                <span class="lib-num lib-num-sample">예</span>
+                <span class="lib-num lib-num-sample">샘</span>
                 <span class="lib-state lib-sample-tag">샘플</span>
             </div>
-            <div class="lib-name">샘플 — 이렇게 사용합니다</div>
-            <div class="lib-sample-sub">완성된 시간표 예시와 1~3단계 사용법을 볼 수 있습니다.<br>실제 시간표에는 영향을 주지 않습니다.</div>
+            <div class="lib-name">샘플</div>
+            <div class="lib-bar"><span style="width:100%"></span></div>
+            <div class="lib-sample-sub">완성된 시간표 예시입니다. 1~3단계를 그대로 둘러볼 수 있고, 무엇을 눌러도 저장되지 않습니다.</div>
         </div>`;
         for (let w = 1; w <= this.state.maxWeek; w++) {
             const s = this._weekSummary(w);
@@ -2594,90 +2600,56 @@ const App = {
             <div class="lib-head">
                 <div>
                     <div class="lib-h1">시간표 저장소</div>
-                    <div class="lib-h2">내 시간표 ${this.state.maxWeek}개 · 카드를 누르면 1단계부터 이어서 편집합니다. 처음이시라면 <b>샘플</b> 카드를 먼저 눌러보세요.</div>
+                    <div class="lib-h2">내 시간표 ${this.state.maxWeek}개 · 카드를 누르면 1단계부터 이어서 편집합니다. 처음이시라면 <b>샘플</b>을 먼저 눌러보세요.</div>
                 </div>
             </div>
             <div class="lib-grid">${cards}</div>
         </div>`;
     },
 
-    // 저장소 첫 카드 '샘플' — 실제 데이터를 만들지 않고 예시만 보여준다(어느 학년에서나 동일).
-    _sampleWeek() {
-        return {
-            periods: { "월": 6, "화": 6, "수": 5, "목": 6, "금": 6 },
-            cells: {
-                "월": ["국어", "수학", "체(강)", "국어", "미술", "미술"],
-                "화": ["수학", "국어", "영어", "사회", "과학", "자율"],
-                "수": ["국어", "수학", "음악", "사회", "과학"],
-                "목": ["수학", "국어", "체(강)", "영어", "도덕", "진로"],
-                "금": ["국어", "사회", "음악", "과학", "체(강)", "자율"]
-            },
-            special: ["체(강)", "음악", "영어"],
-            blocks: { "월": [4, 5] }   // 미술 연차시
+    /* --- 샘플 시간표 (저장소 첫 카드) ---
+       3학년 방의 '샘플' 주차를 앱에 내장한 것이라 학년과 상관없이 내용이 같다.
+       들어가 있는 동안에는 저장이 전부 막히고, 나올 때 원래 상태를 그대로 되돌린다. --- */
+    enterSample() {
+        if (this.state.isSample) return;
+        this._realState = this.state;
+        const src = JSON.parse(JSON.stringify(SAMPLE_TIMETABLE));
+        this.state = {
+            currentWeek: 1,
+            maxWeek: 1,
+            config: src.config,
+            specialists: [],
+            history: { 1: src.week },
+            isMarkingMode: false,
+            markingColor: '#fef08a',
+            isHelperMode: false,
+            selectedSub: null,
+            selectedSidebarColor: null,
+            spPreviewOpen: false,
+            referenceBoards: [],
+            userProfile: null,
+            roomCode: '',        // 저장 경로를 끊는다
+            isAdmin: false,
+            isDirty: false,
+            isSpDirty: false,
+            classSettings: {},
+            tileSel: null,
+            isSample: true
         };
+        document.getElementById('library-overlay').classList.add('hide');
+        this.openTileStep();
+        this.showToast('샘플입니다. 마음껏 눌러보셔도 저장되지 않습니다.');
     },
 
-    libOpenSample() {
-        const S = this._sampleWeek();
-        const maxP = Math.max(...Object.values(S.periods));
-
-        let table = '<table class="sample-tt"><thead><tr><th>교시</th>' +
-            this.days.map(d => `<th>${d}</th>`).join('') + '</tr></thead><tbody>';
-        for (let p = 0; p < maxP; p++) {
-            table += `<tr><th>${p + 1}</th>`;
-            this.days.forEach(d => {
-                if (p >= S.periods[d]) { table += '<td class="sample-off"></td>'; return; }
-                const sub = S.cells[d][p] || '';
-                const cls = [];
-                if (S.special.includes(sub)) cls.push('sample-sp');
-                if ((S.blocks[d] || []).includes(p)) cls.push('sample-block');
-                table += `<td class="${cls.join(' ')}">${sub}</td>`;
-            });
-            table += '</tr>';
-        }
-        table += '</tbody></table>';
-
-        const h = `
-            <div class="sample-wrap">
-                <div class="sample-cols">
-                    <div class="sample-left">
-                        <div class="sample-cap">3학년 1반 · 완성된 주간 시간표 예시 (총 29차시)</div>
-                        ${table}
-                        <div class="sample-legend">
-                            <span><i class="lg-sp"></i> 전담 수업(체육·음악·영어) — 1단계에서 자동으로 들어옵니다</span>
-                            <span><i class="lg-bk"></i> 연차시 — 2단계에서 켜면 두 시간이 붙어서 배정됩니다</span>
-                        </div>
-                    </div>
-                    <div class="sample-right">
-                        <div class="sample-step">
-                            <b>① 시간표 저장소</b>
-                            <p><b>새 시간표 만들기</b>로 이번 주 시간표를 만듭니다. 이름을 <b>“9월 2주”</b>처럼 붙여두면 나중에 찾기 쉽습니다. 새 시간표는 빈 상태로 시작합니다.</p>
-                        </div>
-                        <div class="sample-step">
-                            <b>② 1단계 — 전담 시간표 확인</b>
-                            <p>설정에 등록해 둔 전담 수업이 자동으로 들어와 있습니다(위 표의 <span class="lg-inline lg-sp"></span> 칸). 이번 주에 빠지는 전담은 <b>토글로 끄고</b>, 전담이 아니어도 그 주에만 고정할 자리는 빈 칸을 눌러 과목명을 적습니다.</p>
-                        </div>
-                        <div class="sample-step">
-                            <b>③ 2단계 — 과목별 이번 주 차시</b>
-                            <p>과목마다 이번 주에 몇 차시를 할지 정합니다. 1단계에서 고정한 칸은 <b>“1단계 고정”</b>으로 이미 계산되어 있으니 나머지만 채우면 됩니다. 미술처럼 이어서 하는 과목은 <b>연차시</b>를 켜세요.</p>
-                        </div>
-                        <div class="sample-step">
-                            <b>④ 3단계 — 반별 배정 · 출력</b>
-                            <p><b>과목 배정</b> 버튼을 눌러야 나머지 과목이 채워집니다. 마음에 안 들면 다시 눌러 새로 배정하고, 칸을 눌러 자리를 서로 바꿀 수 있습니다. 마지막에 <b>PDF·이미지</b>로 저장하거나 바로 인쇄합니다.</p>
-                        </div>
-                        <div class="sample-note">설정(학년·학급 수·교시 수·운영 과목·전담 시간표)은 1단계 화면의 <b>설정</b> 버튼에서 한 번만 맞춰두면 됩니다.</div>
-                        <button class="sample-tut-btn" onclick="App.closeModal(false); App.tutorialStart();">🎓 화면을 따라가며 보기 (튜토리얼)</button>
-                    </div>
-                </div>
-            </div>`;
-
-        this.dom.modalTitle.textContent = '샘플 — 이렇게 사용합니다';
-        this.dom.modalContent.innerHTML = h;
-        this.dom.modalCancel.classList.add('hide');
-        this.dom.modalConfirm.textContent = '닫기';
-        this.dom.modalContainer.classList.remove('hide');
-        this.dom.modalContainer.querySelector('.modal').classList.add('modal-wide');
-        this.modalResolve = null;
+    exitSample() {
+        if (!this.state.isSample) return;
+        this.state = this._realState;
+        this._realState = null;
+        // 헤더에 남아 있던 '샘플 - 저장되지 않습니다' 안내를 지운다
+        [0, 1, 2, 3].forEach(n => {
+            const el = document.getElementById(`ts-save-${n}`);
+            if (el) el.textContent = '';
+        });
     },
 
     libOpenWeek(w) {
@@ -2749,6 +2721,12 @@ const App = {
 
     // 각 단계 헤더에 지금 작업 중인 시간표 이름을 표시
     _syncStepTitles() {
+        if (this.state.isSample) {
+            [0, 1, 2, 3].forEach(n => {
+                const el = document.getElementById(`ts-save-${n}`);
+                if (el) el.textContent = '샘플 — 저장되지 않습니다';
+            });
+        }
         const name = this._weekName(this.state.currentWeek);
         ['set', '1', '2', '3'].forEach(k => {
             const el = document.getElementById(`ts-wk-name-${k}`);
