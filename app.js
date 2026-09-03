@@ -489,6 +489,12 @@ const App = {
         bindTileBoard('tile-step-body', 'tile-step-overlay');
         bindTileBoard('step3-body', 'step3-overlay');
 
+        // 창 크기가 바뀌면 한 줄에 들어갈 카드 수가 달라지므로 배치를 다시 잡는다
+        window.addEventListener('resize', () => {
+            this._applyTileLayout(document.getElementById('tile-step-body'), 'step1');
+            this._applyTileLayout(document.getElementById('step3-body'), 'step3');
+        });
+
         document.getElementById('btn-ppo-check').addEventListener('click', () => this.runFinalCheck());
         document.getElementById('btn-ppo-print').addEventListener('click', () => this.printPDF());
         document.getElementById('btn-ppo-download').addEventListener('click', () => this.downloadPDF());
@@ -1765,6 +1771,7 @@ const App = {
             </div>`;
         }
         body.innerHTML = h;
+        this._applyTileLayout(body, 'step3');
         const input = body.querySelector('.ts-tile-input');
         if (input) { input.focus(); input.select(); }
     },
@@ -2223,6 +2230,23 @@ const App = {
         return h + `</div>`;
     },
 
+    // 화면 폭에 따른 한 줄당 최대 카드 수 (style.css의 미디어쿼리와 같은 기준)
+    _tileMaxCols(mode) {
+        const w = window.innerWidth;
+        if (mode === 'step3') return w <= 1000 ? 1 : (w <= 1500 ? 2 : 3);
+        return w <= 640 ? 1 : (w <= 900 ? 2 : (w <= 1400 ? 3 : 5));
+    },
+
+    // 반 수가 적으면 그만큼만 열을 만들어 가운데 정렬되게 하고, 카드 폭도 제한한다.
+    // (4개 반일 때 5열을 그대로 쓰면 왼쪽으로 치우치고 카드가 세로로 길어짐)
+    _applyTileLayout(body, mode) {
+        if (!body) return;
+        const cc = this.state.config.classCount || 1;
+        const cols = Math.max(1, Math.min(this._tileMaxCols(mode), cc));
+        const cap = mode === 'step3' ? 520 : 320;
+        body.style.gridTemplateColumns = `repeat(${cols}, minmax(0, ${cap}px))`;
+    },
+
     renderTileStep() {
         const body = document.getElementById('tile-step-body');
         if (!body) return;
@@ -2233,6 +2257,7 @@ const App = {
             h += `<div class="ts-class-card"><div class="ts-class-title">${c}반</div>${this._tileGridHtml(String(c), true)}</div>`;
         }
         body.innerHTML = h;
+        this._applyTileLayout(body, 'step1');
         const input = body.querySelector('.ts-tile-input');
         if (input) { input.focus(); input.select(); }
     },
