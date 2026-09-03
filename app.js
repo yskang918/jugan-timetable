@@ -3278,9 +3278,12 @@ const App = {
     checkSpecialistConflicts() {
         const occ = {}; // { day_period_classNum: count }
         const maxP = Math.max(...Object.values(this.state.config.periods));
+        // 이번 주에 안 쓰는 보드도 검사에 포함한다.
+        // 설정은 전담 시간표를 '정의'하는 곳이라, 같은 반이 같은 시간에 두 과목에
+        // 배정된 것은 이번 주 사용 여부와 상관없이 짚어줘야 한다.
+        // (새로 만든 보드는 꺼짐으로 시작하므로, 빼면 새 보드가 통째로 검사에서 누락됨)
         this._sp().forEach(sp => {
             if (!sp.data) return;
-            if ((sp.hiddenWeeks || []).includes(this.state.currentWeek)) return;
             this.days.forEach(d => {
                 for (let p = 0; p < maxP; p++) {
                     const val = sp.data[d] ? sp.data[d][p] : undefined;
