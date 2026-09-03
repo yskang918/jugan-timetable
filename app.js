@@ -3332,7 +3332,16 @@ const App = {
         if(!shown) el.classList.add('show');
     },
     deleteSp(i) { this.showConfirm('전담 보드 삭제', '이 전담 보드를 삭제하면 입력된 모든 데이터가 사라집니다.<br>계속하시겠습니까?').then(r => { if(r){ this._sp().splice(i,1); this.saveData(); this._markSpDirty(); this.renderSpecialistView(); } }); },
-    addSpecialistBoard() { this._sp().push({ subject: '', desc: '', data: {}, marks: {}, bg: '#ffffff' }); this.saveData(); this._markSpDirty(); this.renderSpecialistView(); },
+    // 새로 만든 전담 보드는 이번 주에 "꺼짐" 상태로 시작한다.
+    // 켜짐으로 두면 1단계 토글은 켜져 있는데 시간표에는 한 칸도 안 들어간
+    // 어긋난 상태가 되고, 2단계 차시도 0으로 잠긴다.
+    // 표에 반 번호를 다 채운 뒤 1단계에서 토글을 켜면 그때 시간표에 반영된다.
+    addSpecialistBoard() {
+        this._sp().push({ subject: '', desc: '', data: {}, marks: {}, bg: '#ffffff', hiddenWeeks: [this.state.currentWeek] });
+        this.saveData();
+        this._markSpDirty();
+        this.renderSpecialistView();
+    },
     _markSpDirty() {
         this.state.isSpDirty = true;
         const btn = document.getElementById('btn-save-specialist');
