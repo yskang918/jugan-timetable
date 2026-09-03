@@ -2455,7 +2455,7 @@ const App = {
     },
 
     changeGrade() {
-        this.showConfirm('학년 바꾸기',
+        this.showConfirm('학년 선택',
             '다른 학년으로 이동합니다.<br>지금 학년의 작업은 그대로 저장되어 있습니다.<br><br>계속할까요?'
         ).then(r => {
             if (!r) return;
