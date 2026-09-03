@@ -2927,13 +2927,16 @@ const App = {
         this._sp().forEach((sp, idx) => {
             // MATCH CSS: .specialist-table-wrapper
             const div = document.createElement('div'); div.className = 'specialist-table-wrapper';
-            const spName = sp.subject || sp.name || '전담', spDesc = sp.desc || '';
+            // 새로 만든 보드는 빈칸으로 두어 placeholder('과목명')가 보이게 한다.
+            // '전담'을 값으로 넣어두면 새 이름을 치는 순간 '전담실과'처럼 뒤에 붙어버린다.
+            const spName = sp.subject || sp.name || '', spDesc = sp.desc || '';
             const isHidden = (sp.hiddenWeeks || []).includes(this.state.currentWeek);
-            if (isHidden) div.style.cssText = 'opacity:0.45; position:relative;';
+            // 이번 주에 안 쓰는 보드라도 설정에서는 그대로 편집할 수 있어야 한다.
+            // (예전엔 흐리게 처리하고 덮개를 씌워 새로 추가한 보드에 입력을 못 하는 것처럼 보였음)
+            // 사용 여부는 아래 '이번 주 사용 중 / 미사용' 배지로만 알린다.
 
             // MATCH CSS structure: .specialist-table-header, .sp-header-inputs, .sp-subject-input, .sp-desc-input
             let h = `
-                ${isHidden ? `<div style="position:absolute;top:0;left:0;right:0;bottom:0;z-index:2;display:flex;align-items:center;justify-content:center;pointer-events:none;"><span style="background:rgba(0,0,0,0.55);color:#fff;padding:6px 18px;border-radius:20px;font-weight:700;font-size:0.9rem;">이번 주 미사용</span></div>` : ''}
                 <div class="specialist-table-header" style="background-color:${sp.bg || '#f9fafb'};">
                     <div class="sp-header-inputs">
                         <input type="text" class="sp-subject-input" value="${spName}" placeholder="과목명" oninput="App.updateSpName(${idx}, this.value)">
