@@ -2397,6 +2397,79 @@ const App = {
         card.style.left = `${left}px`;
     },
 
+    /* --- 학년 선택 (가장 먼저 나오는 화면) --- */
+
+    // 학년마다 Firestore 방을 따로 쓴다. 방이 다르면 설정·전담·시간표가 완전히 분리된다.
+    _roomForGrade(g) { return `주간학습_${g}학년`; },
+
+    openGradePicker() {
+        ['library-overlay', 'tile-step-overlay', 'step2-overlay', 'step3-overlay', 'settings-overlay', 'tutorial-overlay']
+            .forEach(id => document.getElementById(id)?.classList.add('hide'));
+        document.getElementById('grade-overlay').classList.remove('hide');
+    },
+
+    // 다른 학년으로 넘어갈 때, 이 브라우저에 남아 있던 이전 학년 데이터를 비운다.
+    // (서버에서 불러오기 전까지 옛 학년 내용이 화면에 남거나 새 학년 방에 저장되는 것을 막음)
+    _resetStateForNewRoom() {
+        const defaults = ["국어", "사회", "도덕", "수학", "과학", "체육", "음악", "미술", "영어", "자율", "동아리", "봉사", "진로"];
+        this.state.history = {};
+        this.state.maxWeek = 1;
+        this.state.currentWeek = 1;
+        this.state.classSettings = {};
+        this.state.specialists = [];
+        this.state.referenceBoards = [];
+        this.state.tileSel = null;
+        this._serverLoaded = false;
+        this.state.config = {
+            grade: '', classCount: 4,
+            periods: { "월": 6, "화": 6, "수": 5, "목": 6, "금": 6 },
+            subjects: defaults.map(n => ({ name: n, blockSize: (n === '미술' || n === '실과') ? 2 : 1 })),
+            adminPin: '0000', weekAnchor: null
+        };
+    },
+
+    enterGrade(g) {
+        const grade = parseInt(g, 10);
+        if (!Number.isInteger(grade) || grade < 1 || grade > 6) return;
+        const room = this._roomForGrade(grade);
+
+        try {
+            // 직전에 열었던 방과 다르면 남아 있는 데이터를 비우고 시작한다
+            if (localStorage.getItem('jugan-last-room') !== room) this._resetStateForNewRoom();
+            localStorage.setItem('jugan-grade', String(grade));
+            localStorage.setItem('jugan-last-room', room);
+        } catch (e) { this._resetStateForNewRoom(); }
+
+        this.state.roomCode = room;
+        this._grade = grade;
+        document.getElementById('grade-overlay').classList.add('hide');
+
+        this.loadFromServer().then(() => {
+            // 새 방이면 설정의 학년을 미리 채워둔다
+            if (!this.state.config.grade) this.state.config.grade = String(grade);
+            if (this.state.maxWeek > 0) this.state.currentWeek = this.state.maxWeek;
+            this.initWeekData(this.state.currentWeek);
+            this._syncGradeBadges();
+            this.openLibrary();
+        });
+    },
+
+    changeGrade() {
+        this.showConfirm('학년 바꾸기',
+            '다른 학년으로 이동합니다.<br>지금 학년의 작업은 그대로 저장되어 있습니다.<br><br>계속할까요?'
+        ).then(r => {
+            if (!r) return;
+            try { localStorage.removeItem('jugan-grade'); } catch (e) {}
+            this.openGradePicker();
+        });
+    },
+
+    // 화면에 현재 학년을 표시
+    _syncGradeBadges() {
+        const el = document.getElementById('ts-grade-lib');
+        if (el) el.textContent = this._grade ? `${this._grade}학년` : '';
+    },
+
     /* --- 시간표 저장소 (첫 화면) --- */
 
     // 주차 이름 (없으면 "N주차")
@@ -2424,6 +2497,7 @@ const App = {
 
     openLibrary() {
         this.state.tileSel = null;
+        this._syncGradeBadges();
         ['tile-step-overlay', 'step2-overlay', 'step3-overlay', 'settings-overlay']
             .forEach(id => document.getElementById(id)?.classList.add('hide'));
         document.getElementById('library-overlay').classList.remove('hide');

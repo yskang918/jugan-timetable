@@ -628,6 +628,44 @@ main.container { display: none !important; }
 .tut-next { background: var(--primary-color); border-color: var(--primary-color); color: #fff; }
 .tut-next:hover { background: var(--primary-dark); border-color: var(--primary-dark); }
 
+/* --- 학년 선택 (가장 먼저 나오는 화면) --- */
+#grade-overlay {
+    position: fixed; inset: 0; z-index: 9999;
+    display: flex; align-items: center; justify-content: center;
+    background: #0f172a; padding: 24px;
+}
+#grade-overlay.hide { display: none !important; }
+.gp-wrap { width: 100%; max-width: 560px; text-align: center; }
+.gp-title { font-size: 1.6rem; font-weight: 800; color: #f8fafc; }
+.gp-desc { font-size: 0.92rem; color: #94a3b8; margin-top: 10px; line-height: 1.6; }
+.gp-desc b { color: #cbd5e1; }
+.gp-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+    margin: 28px 0 18px;
+}
+.gp-btn {
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    padding: 18px 10px 14px;
+    background: #1e293b; border: 1.5px solid #334155; border-radius: 16px;
+    color: #e2e8f0; font-size: 0.9rem; font-weight: 700;
+    cursor: pointer; transition: var(--transition);
+}
+.gp-btn:hover {
+    background: #334155; border-color: var(--primary-color);
+    transform: translateY(-2px);
+}
+.gp-num { font-size: 1.9rem; font-weight: 800; color: #fff; line-height: 1.1; }
+.gp-btn:hover .gp-num { color: #4ade80; }
+.gp-hint { font-size: 0.8rem; color: #64748b; }
+
+/* 헤더의 학년 표시 */
+.ts-grade-name {
+    background: #4f46e5; color: #fff;
+    font-size: 0.82rem; font-weight: 800;
+    border-radius: 8px; padding: 3px 11px;
+}
+.ts-grade-name:empty { display: none; }
+
 /* --- 시간표 저장소 (첫 화면) --- */
 #library-overlay {
     position: fixed; inset: 0; z-index: 9998;

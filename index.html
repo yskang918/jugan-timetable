@@ -7,7 +7,7 @@
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#f8fafc">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=20260901k">
+    <link rel="stylesheet" href="style.css?v=20260901l">
 </head>
 <body>
     <div id="app">
@@ -338,11 +338,29 @@
         </div>
     </div>
 
+    <!-- 학년 선택 (가장 먼저 나오는 화면). 학년마다 데이터가 완전히 분리된다 -->
+    <div id="grade-overlay" class="hide">
+        <div class="gp-wrap">
+            <div class="gp-title">학년을 선택하세요</div>
+            <div class="gp-desc">학년마다 설정과 시간표가 <b>따로 저장</b>됩니다.<br>다른 학년 담당자가 바꿔도 서로 영향을 주지 않습니다.</div>
+            <div class="gp-grid">
+                <button class="gp-btn" onclick="App.enterGrade(1)"><span class="gp-num">1</span>학년</button>
+                <button class="gp-btn" onclick="App.enterGrade(2)"><span class="gp-num">2</span>학년</button>
+                <button class="gp-btn" onclick="App.enterGrade(3)"><span class="gp-num">3</span>학년</button>
+                <button class="gp-btn" onclick="App.enterGrade(4)"><span class="gp-num">4</span>학년</button>
+                <button class="gp-btn" onclick="App.enterGrade(5)"><span class="gp-num">5</span>학년</button>
+                <button class="gp-btn" onclick="App.enterGrade(6)"><span class="gp-num">6</span>학년</button>
+            </div>
+            <div class="gp-hint">한 번 고르면 이 브라우저는 다음부터 바로 그 학년으로 열립니다.</div>
+        </div>
+    </div>
+
     <!-- 시간표 저장소: 지금까지 만든 주차 목록 (첫 화면) -->
     <div id="library-overlay" class="hide">
         <div class="ts-header">
-            <div class="ts-title">시간표 저장소</div>
+            <div class="ts-title"><span class="ts-grade-name" id="ts-grade-lib"></span>시간표 저장소</div>
             <div class="ts-header-sub">지금까지 만든 시간표입니다. 카드를 눌러 이어서 편집하세요.</div>
+            <button class="ts-old-view-btn" onclick="App.changeGrade()" title="다른 학년으로 바꿉니다">🔀 학년 바꾸기</button>
             <button class="ts-next-btn" onclick="App.tutorialStart()" title="사용 방법을 순서대로 안내합니다">🎓 튜토리얼</button>
             <button class="ts-old-view-btn" onclick="App.openSettings({type:'library'})" title="설정으로">⚙️ 설정</button>
             <span class="ts-save" id="ts-save-0"></span>
@@ -439,18 +457,18 @@
 
     <!-- 외부 라이브러리 -->
     <!-- PDF·이미지 저장용 라이브러리. 학교망에서 외부 CDN이 막혀도 되도록 프로젝트에 직접 넣어둠 -->
-    <script src="vendor/html2canvas.min.js?v=20260901k"></script>
-    <script src="vendor/jspdf.umd.min.js?v=20260901k"></script>
+    <script src="vendor/html2canvas.min.js?v=20260901l"></script>
+    <script src="vendor/jspdf.umd.min.js?v=20260901l"></script>
     <!-- Firebase SDK (서버 모드에서 사용) -->
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-    <script src="firebase-init.js?v=20260901k"></script>
+    <script src="firebase-init.js?v=20260901l"></script>
     <!-- 데이터 레이어 & 모드 설정 (app.js보다 먼저 로드) -->
-    <script src="db.js?v=20260901k"></script>
-    <script src="mode.js?v=20260901k"></script>
+    <script src="db.js?v=20260901l"></script>
+    <script src="mode.js?v=20260901l"></script>
     <!-- 앱 메인 (원본 그대로 사용) -->
     <!-- ?v= 값은 배포할 때마다 바꿔야 함 — GitHub Pages 캐시 때문에 안 바꾸면 새로고침해도 옛날 버전이 뜸 -->
-    <script src="app.js?v=20260901k"></script>
+    <script src="app.js?v=20260901l"></script>
     <!-- 모드별 UI 반영은 mode.js의 window.load 핸들러에서 처리 -->
 </body>
 </html>
