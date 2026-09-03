@@ -3836,6 +3836,8 @@ const App = {
         this.days.forEach(d => this.dom.periodInputs[d].value = this.state.config.periods[d]);
         this.dom.subjectList.innerHTML = '';
         this.state.config.subjects.forEach((s, idx) => this.addSubjectConfigItem(s.name, idx, s.preferredSlot || 0));
+        // 저장된 순서가 어떻든 설정 화면에서는 항상 교과 순서대로 보여준다.
+        this.sortSubjectRows();
     },
     addSubjectConfigItem(name='', idx=0, preferredSlot=0) {
         const row = document.createElement('div');
