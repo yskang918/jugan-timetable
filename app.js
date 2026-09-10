@@ -2016,49 +2016,6 @@ const App = {
         });
     },
 
-    // 1단계에서 고정(잠금)된 칸들을 값(과목명/직접입력 텍스트)별 개수로 모음.
-    // 전담 보드로 잠긴 칸이든 1단계에서 손으로 입력해 잠긴 칸이든 구분하지 않는다.
-    _step1FixedCounts() {
-        const week = this.state.currentWeek;
-        const wData = this.state.history[week];
-        const counts = {};
-        for (let c = 1; c <= this.state.config.classCount; c++) {
-            const cStr = String(c);
-            this.days.forEach(d => {
-                for (let p = 0; p < this.state.config.periods[d]; p++) {
-                    if (!wData.specialistCells?.[cStr]?.[d]?.[p]) continue;
-                    const v = (wData.classes[cStr] || {})[d]?.[p];
-                    if (!v) continue;
-                    counts[v] = (counts[v] || 0) + 1;
-                }
-            });
-        }
-        return counts;
-    },
-
-    // 이 기본 과목에 이미 고정(1단계)으로 들어가 있는 차시 수와, 그 내역.
-    // 시수 값을 자동으로 채우는 데는 쓰지 않고, 2단계에서 보라색 표시용 힌트로만 쓴다.
-    _fixedForBase(base) {
-        const counts = this._step1FixedCounts();
-        let total = 0;
-        const parts = [];
-        Object.entries(counts).forEach(([sub, n]) => {
-            if (this._baseOf(sub) !== base) return;
-            total += n; parts.push(`${sub} ${n}`);
-        });
-        return { total, parts };
-    },
-
-    // 설정(운영 과목·전담 보드)에 등록되지 않은, 1단계에서 손으로 입력해 고정한 과목들.
-    // 시수 입력칸 없이 보라색으로 표시만 한다.
-    _step2ManualOnlySubjects() {
-        const counts = this._step1FixedCounts();
-        const bases = new Set(this._step2BaseSubjects());
-        return Object.entries(counts)
-            .filter(([sub]) => !bases.has(this._baseOf(sub)))
-            .map(([name, total]) => ({ name, total }));
-    },
-
     // 이 과목이 반별로 몇 차시씩 들어가 있는지 (반마다 다르면 uniform=false)
     _classCountsForSubject(week, sub) {
         const wData = this.state.history[week];
@@ -2091,8 +2048,8 @@ const App = {
         }).map(name => ({ name }));
     },
 
-    // 시수는 항상 0(또는 이전에 입력한 값)에서 시작 — 1단계에서 고정된 칸이 있어도 자동으로 채우지 않는다.
-    // 다만 1단계에서 자리를 잡은 과목은 보라색으로 표시해 눈에 띄게 한다.
+    // 시수는 항상 0(또는 이전에 입력한 값)에서 시작 — 1단계에서 고정된 칸이 있어도 자동으로 채우거나
+    // 따로 표시하지 않는다. 3단계 배정 시 (목표 − 1단계에서 이미 채워진 칸) 만큼만 알아서 배정된다.
     // 국(도)/체(강)/과(실) 같은 파생 과목은 국어/체육/과학에 합쳐서 보여준다.
     renderStep2() {
         const body = document.getElementById('step2-body');
@@ -2105,12 +2062,11 @@ const App = {
         let cards = '';
 
         this._step2BaseSubjects().forEach(sub => {
-            const fixed = this._fixedForBase(sub);
             const val = wData.targets[sub] || 0;
             sum += val;
             const cfg = (this.state.config.subjects || []).find(x => x.name === sub);
             const on = !!(cfg && cfg.blockSize > 1);
-            cards += `<div class="s2-item${fixed.total ? ' s2-item-fixed' : ''}">
+            cards += `<div class="s2-item">
                 <div class="s2-item-name">${sub}</div>
                 <input type="number" min="0" class="s2-input" value="${val}" data-sub="${sub}">
                 <label class="s2-toggle${on ? ' on' : ''}" title="켜면 랜덤 배정 시 2차시를 붙여서 연달아 배정합니다.">
@@ -2118,16 +2074,6 @@ const App = {
                     <span class="s2-track"><span class="s2-knob"></span></span>
                     <span class="s2-toggle-label">연차시</span>
                 </label>
-                ${fixed.total ? `<div class="s2-inc">${fixed.parts.join(' · ')} 포함</div>` : ''}
-            </div>`;
-        });
-
-        // 설정에 없는, 1단계에서 손으로 입력해 고정한 과목 — 시수 입력 없이 보라색으로 표시만
-        this._step2ManualOnlySubjects().forEach(item => {
-            cards += `<div class="s2-item s2-item-fixed">
-                <div class="s2-item-name">${item.name}</div>
-                <div class="s2-fixed-num">${item.total}</div>
-                <div class="s2-fixed-tag">1단계 고정</div>
             </div>`;
         });
 
@@ -2136,8 +2082,7 @@ const App = {
                 <div class="s2-panel-head">
                     <div>
                         <div class="s2-panel-title">이번 주 과목별 차시</div>
-                        <div class="s2-panel-desc">차시를 입력하고, 2차시를 붙여서 배정할 과목은 <b>연차시</b>를 켜세요.
-                            <span class="s2-legend">보라색은 1단계에서 자리를 정한 과목입니다.</span></div>
+                        <div class="s2-panel-desc">차시를 입력하고, 2차시를 붙여서 배정할 과목은 <b>연차시</b>를 켜세요.</div>
                     </div>
                     <div class="s2-total-box">
                         <div class="s2-total-label">이번 주 합계</div>
@@ -2337,7 +2282,7 @@ const App = {
             {
                 sel: '#tile-step-bar',
                 title: '이번 주에 넣을 전담만 켜기',
-                text: '전담 과목마다 켜고 끌 수 있습니다.<br><b>끄면</b> 그 과목이 이번 주 시간표에서 빠지고, <b>켜면</b> 원래 자리에 다시 들어갑니다.<br>2단계에서 보라색 표시로 확인할 수 있지만, 시수는 자동으로 채워지지 않으니 직접 입력해주세요.'
+                text: '전담 과목마다 켜고 끌 수 있습니다.<br><b>끄면</b> 그 과목이 이번 주 시간표에서 빠지고, <b>켜면</b> 원래 자리에 다시 들어갑니다.<br>2단계 시수는 직접 입력해주세요.'
             },
             {
                 sel: '#tile-step-overlay .ts-header-sub',
@@ -2353,7 +2298,7 @@ const App = {
                 before: () => { hideAll('step2-overlay'); this.openStep2(); },
                 sel: '#step2-body .s2-grid',
                 title: '③ 2단계 — 과목별 이번 주 시수',
-                text: '이번 주에 과목마다 몇 차시를 할지 <b>직접 입력</b>합니다(항상 0부터 시작).<br>1단계에서 자리를 잡은 과목은 보라색으로 표시되지만 시수는 자동으로 채워지지 않으니, 그 과목도 직접 입력해주세요.<br>설정에 없는 과목을 1단계에서 손으로 입력해 고정했다면, 그 과목은 보라색으로 <b>표시만</b> 되고 시수 입력칸은 따로 없습니다.'
+                text: '이번 주에 과목마다 몇 차시를 할지 <b>직접 입력</b>합니다(항상 0부터 시작). 1단계에서 이미 자리를 잡은 과목도 마찬가지로 직접 입력하면 됩니다.<br>3단계에서 <b>과목 배정</b>을 누르면 여기 입력한 목표에서 1단계에 이미 채워진 만큼을 빼고 나머지만 자동으로 배정해줍니다.'
             },
             {
                 sel: '#step2-body .s2-toggle',
