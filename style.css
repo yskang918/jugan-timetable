@@ -486,7 +486,7 @@ td.duplicate-error { background-color: #fee2e2 !important; border: 2px solid #ef
 #settings-overlay.hide { display: none !important; }
 .ts-body-plain { flex: 1; overflow-y: auto; padding: 24px; }
 
-/* --- 2단계: 과목별 이번 주 차시 --- */
+/* --- 2단계: 과목별 이번 주 시수 --- */
 #step2-overlay {
     position: fixed; inset: 0; z-index: 9998;
     display: flex; flex-direction: column;
