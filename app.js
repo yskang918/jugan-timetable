@@ -1663,7 +1663,8 @@ const App = {
     openSettings(from) {
         this._settingsReturn = from || { type: 'step', step: 1 };
         this.state.tileSel = null;
-        document.getElementById('tile-step-overlay').classList.add('hide');
+        ['tile-step-overlay', 'library-overlay', 'step2-overlay', 'step3-overlay']
+            .forEach(id => document.getElementById(id)?.classList.add('hide'));
         document.getElementById('settings-overlay').classList.remove('hide');
         this.renderSettingsView();
         this.renderSpecialistView();
