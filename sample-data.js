@@ -102,7 +102,7 @@ const SAMPLE_TIMETABLE = {
     "annualTargets": {}
   },
   "week": {
-    "name": "샘플",
+    "name": "5주차(9.14-9.18)",
     "specialistAutofilled": true,
     "targets": {
       "국어": 5,
