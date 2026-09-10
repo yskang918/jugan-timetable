@@ -2551,7 +2551,7 @@ const App = {
                 <span class="lib-num lib-num-sample">샘</span>
                 <span class="lib-state lib-sample-tag">샘플</span>
             </div>
-            <div class="lib-name">샘플</div>
+            <div class="lib-name">${SAMPLE_TIMETABLE.week.name || '샘플'}</div>
             <div class="lib-bar"><span style="width:100%"></span></div>
             <div class="lib-sample-sub">완성된 시간표 예시입니다. 1~3단계를 그대로 둘러볼 수 있고, 무엇을 눌러도 저장되지 않습니다.</div>
         </div>`;
