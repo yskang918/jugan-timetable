@@ -451,8 +451,7 @@ const App = {
 
                 const openInput = el.querySelector('.ts-tile-input');
                 if (openInput) {
-                    const wData = this.state.history[this.state.currentWeek];
-                    wData.classes[openInput.dataset.cls][openInput.dataset.day][parseInt(openInput.dataset.idx)] = openInput.value.trim();
+                    this.tileInputCommit(openInput.dataset.cls, openInput.dataset.day, parseInt(openInput.dataset.idx), openInput.value);
                 }
 
                 const xBtn = e.target.closest('.ts-tile-x');
@@ -2180,9 +2179,11 @@ const App = {
         Object.entries(bySlot).forEach(([key, classes]) => {
             if (classes.length < 2) return;
             const [d, p, v] = key.split('|');
-            // 설정(전담 시간표)에서 같은 칸에 함께 등록된 반끼리는 공동 수업이므로 겹침에서 제외
+            // 전담 보드와 무관한 값(1단계에서 직접 손으로 입력한 텍스트)은 보통 전체 반이
+            // 같은 시간에 같이 하는 활동이라 겹침으로 보지 않는다.
             const sp = this._spByName(v);
-            const registered = (sp && sp.data[d] && sp.data[d][p])
+            if (!sp) return;
+            const registered = (sp.data[d] && sp.data[d][p])
                 ? new Set(String(sp.data[d][p]).split(/[,\s]+/).map(x => x.trim()).filter(Boolean))
                 : new Set();
             classes.forEach(c => {
