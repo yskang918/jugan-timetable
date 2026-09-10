@@ -1177,7 +1177,7 @@ const App = {
                 <ol style="margin:0 0 14px; padding-left:20px; color:#475569;">
                     <li style="margin-bottom:6px;"><b>📥 이번 주 전담과목 가져오기</b> — 3번에서 입력해둔 전담 과목 중, 이번 주에 실제로 있는 과목만 골라 "가져오기"를 누릅니다. (이번 주에 없거나 줄어든 과목은 안 누르면 돼요)</li>
                     <li style="margin-bottom:6px;"><b>📌 주간 공통 과목 고정</b> — 안전교육, 방송조회처럼 모든 반이 같은 요일·교시에 똑같이 하는 시간이 있으면, 요일·교시·과목을 고르고 "전체 반 고정 배정"을 누르세요.</li>
-                    <li style="margin-bottom:6px;"><b>이번 주 목표 차시 입력</b> — 위 두 가지를 가져오면 해당 과목의 목표 차시가 자동으로 채워집니다. 국어·수학 등 나머지 과목의 이번 주 목표 차시를 표에 직접 입력하세요.</li>
+                    <li style="margin-bottom:6px;"><b>이번 주 목표 차시 입력</b> — "주간 공통 과목 고정"으로 채운 과목은 목표 차시가 자동으로 채워집니다. 전담과목 가져오기로 채운 과목을 포함해, 나머지 과목의 이번 주 목표 차시는 표에 직접 입력하세요.</li>
                     <li style="margin-bottom:6px;"><b>전체 랜덤 배정</b> — 목표 차시를 다 입력했으면 눌러주세요. 나머지 빈 칸에 과목이 자동으로 배치됩니다. <b>이미 채워진 전담·고정배정 칸은 절대 건드리지 않으니</b> 안심하고 눌러도 됩니다.</li>
                     <li style="margin-bottom:6px;"><b>세부 수정</b> — 특정 칸만 직접 바꾸고 싶으면, 왼쪽 "과목 직접 입력하기"에서 과목을 클릭한 뒤 시간표의 원하는 칸을 클릭하면 그 자리에 채워집니다.</li>
                     <li><b>📄 주간학습안내</b> — 완성된 시간표를 학생·학부모용 안내문 형태로 출력합니다.</li>
@@ -1454,7 +1454,6 @@ const App = {
     // 상단 "이번 주 목표" 표만 다시 그림 (반별 시간표 입력칸은 그대로 두어 포커스가 끊기지 않게)
     _renderTargetBar(mode) {
         if (!mode) mode = this._timetableMode || 'all';
-        this._syncSpecialistTargets(this.state.currentWeek);
         const tgts = this.state.history[this.state.currentWeek].targets, subs = this.state.config.subjects;
         let th = `<div class="target-table-wrapper"><table class="target-table"><thead><tr><th>목표 차시</th>`;
         subs.forEach(s => th += `<th>${s.name}</th>`);
@@ -1463,10 +1462,10 @@ const App = {
         let tv = 0;
         subs.forEach(s => {
             const isAuto = this._isSpecialistManagedSubject(s.name);
-            const locked = targetReadonly || isAuto;
+            const locked = targetReadonly;
             const cls = `target-input-global target-cell-input${locked ? ' target-locked' : ''}${isAuto ? ' target-auto' : ''}`;
             const title = isAuto
-                ? '전담 배정에서 자동으로 계산됩니다. 반별 시간표에서 칸을 지우면 여기도 같이 줄어듭니다.'
+                ? '1단계에서 자리를 잡은 과목입니다. 차시는 자동으로 채워지지 않으니 직접 입력하세요.'
                 : (targetReadonly ? '관리자만 목표 차시를 변경할 수 있습니다.' : '');
             th += `<td><input type="text" inputmode="numeric" class="${cls}" data-sub="${s.name}" value="${tgts[s.name] || 0}"${locked ? ' readonly' : ''}${title ? ` title="${title}"` : ''}></td>`;
             tv += tgts[s.name] || 0;
@@ -2017,19 +2016,47 @@ const App = {
         });
     },
 
-    // 이 기본 과목에 이미 고정(1단계)으로 들어가 있는 차시 수와, 그 내역
-    _fixedForBase(base) {
+    // 1단계에서 고정(잠금)된 칸들을 값(과목명/직접입력 텍스트)별 개수로 모음.
+    // 전담 보드로 잠긴 칸이든 1단계에서 손으로 입력해 잠긴 칸이든 구분하지 않는다.
+    _step1FixedCounts() {
         const week = this.state.currentWeek;
+        const wData = this.state.history[week];
+        const counts = {};
+        for (let c = 1; c <= this.state.config.classCount; c++) {
+            const cStr = String(c);
+            this.days.forEach(d => {
+                for (let p = 0; p < this.state.config.periods[d]; p++) {
+                    if (!wData.specialistCells?.[cStr]?.[d]?.[p]) continue;
+                    const v = (wData.classes[cStr] || {})[d]?.[p];
+                    if (!v) continue;
+                    counts[v] = (counts[v] || 0) + 1;
+                }
+            });
+        }
+        return counts;
+    },
+
+    // 이 기본 과목에 이미 고정(1단계)으로 들어가 있는 차시 수와, 그 내역.
+    // 시수 값을 자동으로 채우는 데는 쓰지 않고, 2단계에서 보라색 표시용 힌트로만 쓴다.
+    _fixedForBase(base) {
+        const counts = this._step1FixedCounts();
         let total = 0;
         const parts = [];
-        this._step2Subjects().forEach(s => {
-            const sub = s.name;
+        Object.entries(counts).forEach(([sub, n]) => {
             if (this._baseOf(sub) !== base) return;
-            if (!this._isSpecialistManagedSubject(sub)) return;
-            const n = this._classCountsForSubject(week, sub).max;
-            if (n > 0) { total += n; parts.push(`${sub} ${n}`); }
+            total += n; parts.push(`${sub} ${n}`);
         });
         return { total, parts };
+    },
+
+    // 설정(운영 과목·전담 보드)에 등록되지 않은, 1단계에서 손으로 입력해 고정한 과목들.
+    // 시수 입력칸 없이 보라색으로 표시만 한다.
+    _step2ManualOnlySubjects() {
+        const counts = this._step1FixedCounts();
+        const bases = new Set(this._step2BaseSubjects());
+        return Object.entries(counts)
+            .filter(([sub]) => !bases.has(this._baseOf(sub)))
+            .map(([name, total]) => ({ name, total }));
     },
 
     // 이 과목이 반별로 몇 차시씩 들어가 있는지 (반마다 다르면 uniform=false)
@@ -2064,7 +2091,8 @@ const App = {
         }).map(name => ({ name }));
     },
 
-    // 1단계에서 고정된 과목은 자동 계산, 나머지는 직접 입력.
+    // 시수는 항상 0(또는 이전에 입력한 값)에서 시작 — 1단계에서 고정된 칸이 있어도 자동으로 채우지 않는다.
+    // 다만 1단계에서 자리를 잡은 과목은 보라색으로 표시해 눈에 띄게 한다.
     // 국(도)/체(강)/과(실) 같은 파생 과목은 국어/체육/과학에 합쳐서 보여준다.
     renderStep2() {
         const body = document.getElementById('step2-body');
@@ -2078,26 +2106,11 @@ const App = {
 
         this._step2BaseSubjects().forEach(sub => {
             const fixed = this._fixedForBase(sub);
-            const allFixed = this._isSpecialistManagedSubject(sub);
-
-            if (allFixed) {
-                // 과목 자체가 전담 (영어·도덕) — 모양은 같고 색만 보라색, 값은 자동
-                wData.targets[sub] = fixed.total;
-                sum += fixed.total;
-                cards += `<div class="s2-item s2-item-fixed">
-                    <div class="s2-item-name">${sub}</div>
-                    <div class="s2-fixed-num">${fixed.total}</div>
-                    <div class="s2-fixed-tag">1단계 고정</div>
-                </div>`;
-                return;
-            }
-
-            // 직접 입력 과목. 파생 전담(국(도) 등)이 있으면 그 차시가 이 과목에 포함됨을 알려준다
             const val = wData.targets[sub] || 0;
             sum += val;
             const cfg = (this.state.config.subjects || []).find(x => x.name === sub);
             const on = !!(cfg && cfg.blockSize > 1);
-            cards += `<div class="s2-item">
+            cards += `<div class="s2-item${fixed.total ? ' s2-item-fixed' : ''}">
                 <div class="s2-item-name">${sub}</div>
                 <input type="number" min="0" class="s2-input" value="${val}" data-sub="${sub}">
                 <label class="s2-toggle${on ? ' on' : ''}" title="켜면 랜덤 배정 시 2차시를 붙여서 연달아 배정합니다.">
@@ -2106,6 +2119,15 @@ const App = {
                     <span class="s2-toggle-label">연차시</span>
                 </label>
                 ${fixed.total ? `<div class="s2-inc">${fixed.parts.join(' · ')} 포함</div>` : ''}
+            </div>`;
+        });
+
+        // 설정에 없는, 1단계에서 손으로 입력해 고정한 과목 — 시수 입력 없이 보라색으로 표시만
+        this._step2ManualOnlySubjects().forEach(item => {
+            cards += `<div class="s2-item s2-item-fixed">
+                <div class="s2-item-name">${item.name}</div>
+                <div class="s2-fixed-num">${item.total}</div>
+                <div class="s2-fixed-tag">1단계 고정</div>
             </div>`;
         });
 
@@ -2304,7 +2326,7 @@ const App = {
             {
                 sel: '.lib-new',
                 title: '새 시간표 만들기',
-                text: '새로운 한 주를 시작할 때 누릅니다. 이름을 정할 수 있어서 <b>“9월 2주”</b>처럼 알아보기 쉽게 저장할 수 있어요.<br>새로 만든 시간표는 <b>아무것도 배정되지 않은 빈 상태</b>로 시작합니다.<br>여기서 정한 이름은 나중에 <b>PDF·이미지로 저장할 때 문서 제목</b>이 됩니다. 이름에 <b>“5주차(9.14-9.18)”</b>처럼 숫자가 있으면 그 숫자만 뽑아 “5주차”로 쓰고, <b>“연습”</b>처럼 숫자가 없으면 이름 그대로 제목에 들어갑니다.'
+                text: '새로운 한 주를 시작할 때 누릅니다. 이름을 정할 수 있어서 <b>“9월 2주”</b>처럼 알아보기 쉽게 저장할 수 있어요.<br>새로 만든 시간표는 <b>아무것도 배정되지 않은 빈 상태</b>로 시작합니다.<br>여기서 정한 이름은 나중에 <b>PDF·이미지로 저장할 때 문서 제목</b>에 그대로 들어갑니다(예: “5주차(9.14-9.18)”이라고 지으면 제목도 “OO학년 5주차(9.14-9.18) 반별 시간표”가 됩니다).'
             },
             {
                 before: () => { hideAll('tile-step-overlay'); this.openTileStep(); },
@@ -2315,7 +2337,7 @@ const App = {
             {
                 sel: '#tile-step-bar',
                 title: '이번 주에 넣을 전담만 켜기',
-                text: '전담 과목마다 켜고 끌 수 있습니다.<br><b>끄면</b> 그 과목이 이번 주 시간표에서 빠지고, <b>켜면</b> 원래 자리에 다시 들어갑니다.<br>2단계의 차시에도 자동으로 반영돼요.'
+                text: '전담 과목마다 켜고 끌 수 있습니다.<br><b>끄면</b> 그 과목이 이번 주 시간표에서 빠지고, <b>켜면</b> 원래 자리에 다시 들어갑니다.<br>2단계에서 보라색 표시로 확인할 수 있지만, 시수는 자동으로 채워지지 않으니 직접 입력해주세요.'
             },
             {
                 sel: '#tile-step-overlay .ts-header-sub',
@@ -2331,7 +2353,7 @@ const App = {
                 before: () => { hideAll('step2-overlay'); this.openStep2(); },
                 sel: '#step2-body .s2-grid',
                 title: '③ 2단계 — 과목별 이번 주 시수',
-                text: '이번 주에 과목마다 몇 차시를 할지 정합니다.<br>1단계에서 자리를 잡은 과목은 <b>“1단계 고정”</b>으로 자동 계산되니, 나머지 과목만 입력하면 됩니다.'
+                text: '이번 주에 과목마다 몇 차시를 할지 <b>직접 입력</b>합니다(항상 0부터 시작).<br>1단계에서 자리를 잡은 과목은 보라색으로 표시되지만 시수는 자동으로 채워지지 않으니, 그 과목도 직접 입력해주세요.<br>설정에 없는 과목을 1단계에서 손으로 입력해 고정했다면, 그 과목은 보라색으로 <b>표시만</b> 되고 시수 입력칸은 따로 없습니다.'
             },
             {
                 sel: '#step2-body .s2-toggle',
@@ -2541,12 +2563,10 @@ const App = {
         return (this.state.history[w] && this.state.history[w].name) || `${w}주차`;
     },
 
-    // 다운로드/인쇄 제목용 — 주차 이름(예: "5주차(9.14-9.18)")에 숫자가 있으면 그 숫자만 뽑아 "5주차"로 만든다.
-    // "연습"처럼 숫자가 없는 이름은 그 이름을 그대로 쓴다(제목이 "OO학년 연습 반별 시간표"가 됨).
+    // 다운로드/인쇄 제목용 — 저장소에서 정한 시간표 이름을 그대로 쓴다.
+    // (예: 이름이 "5주차(9.14-9.18)"이면 제목이 "OO학년 5주차(9.14-9.18) 반별 시간표"가 됨)
     _weekNumberLabel(w) {
-        const name = this._weekName(w);
-        const m = name.match(/\d+/);
-        return m ? `${m[0]}주차` : name;
+        return this._weekName(w);
     },
 
     // 그 주차가 얼마나 채워졌는지 요약
@@ -2770,7 +2790,7 @@ const App = {
         }).join('');
 
         bar.innerHTML = `<span class="ts-bar-label">이번 주 전담 시간표</span>${chips}
-            <span class="ts-bar-hint">끄면 그 과목이 이번 주 시간표에서 빠지고, 2단계 차시에도 반영됩니다.</span>`;
+            <span class="ts-bar-hint">끄면 그 과목이 이번 주 시간표에서 빠집니다. 2단계 시수는 직접 입력해주세요.</span>`;
     },
 
     // 켜면 후보 칸을 채우고, 끄면 이번 주 시간표에서 그 과목을 걷어낸다
@@ -2781,31 +2801,20 @@ const App = {
         const name = sp.subject || sp.name;
         if (!name) return;
 
-        const wData = this.state.history[week];
-        const base = this._baseOf(name);
-
         if (this._spOnThisWeek(sp)) {
-            // 끄기 — 뺀 칸 수만큼 기본 과목의 이번 주 차시도 줄인다
-            const n = this._classCountsForSubject(week, name).max;
+            // 끄기 — 2단계 시수는 건드리지 않는다(직접 입력한 값을 그대로 둠)
             if (!sp.hiddenWeeks) sp.hiddenWeeks = [];
             sp.hiddenWeeks.push(week);
             this._clearSubjectCells(week, name);
-            wData.targets[base] = Math.max(0, (wData.targets[base] || 0) - n);
             this.showToast(`${name} — 이번 주 시간표에서 뺐습니다.`);
         } else {
-            // 켜기 — 채운 칸 수만큼 기본 과목의 차시를 늘린다
-            // (영어·도덕처럼 과목 자체가 전담이면 _syncSpecialistTargets가 값을 정하므로 건드리지 않음)
+            // 켜기 — 마찬가지로 2단계 시수는 건드리지 않는다
             sp.hiddenWeeks = (sp.hiddenWeeks || []).filter(w => w !== week);
             this._fillOneSpecialist(week, sp);
-            if (base !== name) {
-                const n = this._classCountsForSubject(week, name).max;
-                wData.targets[base] = (wData.targets[base] || 0) + n;
-            }
             this.showToast(`${name} — 이번 주 시간표에 넣었습니다.`);
         }
 
         this.state.tileSel = null;
-        this._syncSpecialistTargets(week);
         this.state.isDirty = true;
         this.saveData();
         this.renderTileStep();
@@ -4376,30 +4385,10 @@ ${bodyRows.join('')}
         this._syncSpecialistTargets(week);
     },
 
-    // 전담 과목의 "이번 주 목표"를 실제 시간표에 채워진 개수와 항상 일치하게 맞춤 (늘어도 줄어도 반영)
-    _syncSpecialistTargets(week) {
-        const wData = this.state.history[week];
-        if (!wData) return;
-        if (!wData.targets) wData.targets = {};
-        const specialistSubs = new Set((wData.specialists || [])
-            .filter(sp => !(sp.hiddenWeeks || []).includes(week))
-            .map(sp => sp.subject || sp.name)
-            .filter(Boolean));
-        specialistSubs.forEach(sub => { wData.targets[sub] = this._avgFilledForSubject(week, sub); });
-
-        // 국(도)·체(강)·과(실)처럼 괄호가 붙은 전담은 국어·체육·과학에 합쳐서 세므로,
-        // 그 기본 과목의 이번 주 차시가 최소한 이미 고정된 칸 수만큼은 되도록 맞춘다.
-        // (안 그러면 새 주차에서 국(도) 1칸이 놓여 있는데도 국어가 0으로 보임)
-        const fixedByBase = {};
-        specialistSubs.forEach(sub => {
-            const base = this._baseOf(sub);
-            if (base === sub) return;   // 영어·도덕처럼 과목 자체가 전담인 경우는 위에서 처리됨
-            fixedByBase[base] = (fixedByBase[base] || 0) + this._classCountsForSubject(week, sub).max;
-        });
-        Object.keys(fixedByBase).forEach(base => {
-            if (fixedByBase[base] > (wData.targets[base] || 0)) wData.targets[base] = fixedByBase[base];
-        });
-    },
+    // 예전엔 전담 과목의 "이번 주 목표"를 실제 채워진 개수로 자동 맞췄지만,
+    // 이제는 2단계 시수를 항상 직접 입력하게 바꾸면서 이 자동 동기화는 끔(의도적으로 아무 것도 안 함).
+    // 호출부를 여기저기 다 정리하는 대신 이 함수만 no-op으로 남겨 둠.
+    _syncSpecialistTargets(week) {},
 
     // 현재 주차에서 이 과목이 전담 배정으로 자동 집계되는 과목인지
     _isSpecialistManagedSubject(sub) {
