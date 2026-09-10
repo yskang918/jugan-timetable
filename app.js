@@ -1869,7 +1869,7 @@ const App = {
         const pages = [];
         for (let i = 0; i < cards.length; i += per) {
             pages.push(`<div class="p3-page">
-                <div class="p3-title">${gradeText}${this.state.currentWeek}주차 반별 시간표</div>
+                <div class="p3-title">${gradeText}${this._weekNumberLabel(this.state.currentWeek)} 반별 시간표</div>
                 <div class="p3-grid">${cards.slice(i, i + per).join('')}</div>
             </div>`);
         }
@@ -1918,7 +1918,7 @@ const App = {
 
     _step3FileName(ext) {
         const g = this.state.config.grade ? `${this.state.config.grade}학년_` : '';
-        return `${g}${this.state.currentWeek}주차_반별시간표.${ext}`;
+        return `${g}${this._weekNumberLabel(this.state.currentWeek)}_반별시간표.${ext}`;
     },
 
     // 화면 밖에 A4 크기(px)로 그려서 캔버스로 캡처 — 페이지 경계가 확실해짐
@@ -1955,7 +1955,7 @@ const App = {
         const win = window.open('', '_blank', 'width=980,height=760');
         if (!win) { this.showAlert('팝업 차단됨', '브라우저가 새 창을 막았습니다.<br>이 사이트의 팝업을 허용한 뒤 다시 눌러주세요.'); return; }
         win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8">
-            <title>${gradeText}${this.state.currentWeek}주차 반별 시간표</title>
+            <title>${gradeText}${this._weekNumberLabel(this.state.currentWeek)} 반별 시간표</title>
             <style>@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&display=swap');
             ${this._step3Css('print')}</style></head>
             <body><div class="p3-root">${this._step3Pages().join('')}</div></body></html>`);
@@ -2179,9 +2179,16 @@ const App = {
         const res = {};
         Object.entries(bySlot).forEach(([key, classes]) => {
             if (classes.length < 2) return;
-            const [d, p] = key.split('|');
+            const [d, p, v] = key.split('|');
+            // 설정(전담 시간표)에서 같은 칸에 함께 등록된 반끼리는 공동 수업이므로 겹침에서 제외
+            const sp = this._spByName(v);
+            const registered = (sp && sp.data[d] && sp.data[d][p])
+                ? new Set(String(sp.data[d][p]).split(/[,\s]+/).map(x => x.trim()).filter(Boolean))
+                : new Set();
             classes.forEach(c => {
-                res[`${c}|${d}|${p}`] = classes.filter(x => x !== c);
+                const cStr = String(c);
+                const others = classes.filter(x => x !== c && !(registered.has(cStr) && registered.has(String(x))));
+                if (others.length > 0) res[`${c}|${d}|${p}`] = others;
             });
         });
         return res;
@@ -2531,6 +2538,14 @@ const App = {
     // 주차 이름 (없으면 "N주차")
     _weekName(w) {
         return (this.state.history[w] && this.state.history[w].name) || `${w}주차`;
+    },
+
+    // 다운로드/인쇄 제목용 — 주차 이름(예: "5주차(9.14-9.18)")에서 숫자만 뽑아 "5주차"로 만듦.
+    // 이름을 안 바꿨거나 숫자가 없으면 저장소 순번(w)을 그대로 쓴다.
+    _weekNumberLabel(w) {
+        const name = this._weekName(w);
+        const m = name.match(/\d+/);
+        return `${m ? m[0] : w}주차`;
     },
 
     // 그 주차가 얼마나 채워졌는지 요약
@@ -4113,9 +4128,9 @@ const App = {
         const range = this.getWeekDateRange(this.state.currentWeek) || '';
         const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
 <head><meta charset="UTF-8">
-<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>${this.state.currentWeek}주차 시간표</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->
+<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>${this._weekNumberLabel(this.state.currentWeek)} 시간표</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->
 </head><body>
-<p style="font-size:13pt; font-weight:bold; margin-bottom:8px;">${this.state.currentWeek}주차 시간표 ${range}</p>
+<p style="font-size:13pt; font-weight:bold; margin-bottom:8px;">${this._weekNumberLabel(this.state.currentWeek)} 시간표 ${range}</p>
 <table border="0" cellspacing="0" cellpadding="0" style="border-collapse:collapse;">
 ${bodyRows.join('')}
 </table>
@@ -4125,7 +4140,7 @@ ${bodyRows.join('')}
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `${this.state.currentWeek}주차_반별시간표.xls`;
+        a.download = `${this._weekNumberLabel(this.state.currentWeek)}_반별시간표.xls`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -4499,7 +4514,7 @@ ${bodyRows.join('')}
 
         /* 1페이지: 반별 시간표 */
         let page1 = `<style>${sizeCSS}</style>`;
-        page1 += `<div class="${p}-doc-title">${gradeText}${this.state.currentWeek}주차 주간학습안내</div>`;
+        page1 += `<div class="${p}-doc-title">${gradeText}${this._weekNumberLabel(this.state.currentWeek)} 주간학습안내</div>`;
         page1 += `<div class="${p}-grid ${p}-grid-${cols}">`;
         for (let c = 1; c <= cc; c++) page1 += this._buildClassTableHtml(c, cls);
         page1 += `</div>`;
@@ -4567,7 +4582,7 @@ ${bodyRows.join('')}
             }
 
             const gradeText = this.state.config.grade ? `${this.state.config.grade}학년_` : '';
-            pdf.save(`${gradeText}${this.state.currentWeek}주차_주간학습안내.pdf`);
+            pdf.save(`${gradeText}${this._weekNumberLabel(this.state.currentWeek)}_주간학습안내.pdf`);
         } catch(e) {
             alert('PDF 생성 중 오류가 발생했습니다.');
         } finally {
@@ -4606,7 +4621,7 @@ ${bodyRows.join('')}
         if (!win) { window.print(); return; }
         const p2Block = page2 ? `<div class="pt-page-break">${page2}</div>` : '';
         win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8">
-            <title>${gradeText}${this.state.currentWeek}주차 주간학습안내</title>
+            <title>${gradeText}${this._weekNumberLabel(this.state.currentWeek)} 주간학습안내</title>
             <style>${css}</style></head><body>${page1}${p2Block}</body></html>`);
         win.document.close();
         win.focus();
@@ -4669,7 +4684,7 @@ ${bodyRows.join('')}
         };
 
         // 1페이지: 반별 시간표
-        let body = `<h2 style="text-align:center; font-size:16pt; margin-bottom:16pt;">${gradeText}${this.state.currentWeek}주차 주간학습안내</h2>`;
+        let body = `<h2 style="text-align:center; font-size:16pt; margin-bottom:16pt;">${gradeText}${this._weekNumberLabel(this.state.currentWeek)} 주간학습안내</h2>`;
         for (let c = 1; c <= cc; c++) body += buildClassTable(c);
 
         // 2페이지: 전담 시간표
@@ -4696,7 +4711,7 @@ ${bodyRows.join('')}
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `${gradeText}${this.state.currentWeek}주차_주간학습안내.doc`;
+        a.download = `${gradeText}${this._weekNumberLabel(this.state.currentWeek)}_주간학습안내.doc`;
         a.click();
         URL.revokeObjectURL(url);
     },
